@@ -1,6 +1,6 @@
 # Roadmap
 
-1. **Movement core.** Port TFC player movement to plain C# in
+1. **Movement core (done: matches the original on all scenarios).** Port TFC player movement to plain C# in
    `Assets/FortressUnited/Core/Movement`, with a differential test harness
    that runs the same inputs through the faithful TFC build and through ours
    and compares positions and velocities tick by tick. Needs the .NET SDK

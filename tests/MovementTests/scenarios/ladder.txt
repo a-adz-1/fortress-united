@@ -1,0 +1,13 @@
+# Climb a ladder, stop, climb down, jump off
+physinfo tfc 1
+box -4096 -4096 -64 4096 4096 0
+box 100 -200 0 132 200 400
+ladder 96 -32 0 100 32 380
+origin 0 0 36
+maxspeed 400
+cmd 40 10 0 0 0 400 0 0 8
+cmd 100 10 -30 0 0 400 0 0 8
+cmd 20 10 0 0 0 0 0 0 0
+cmd 40 10 30 0 0 400 0 0 8
+cmd 5 10 0 0 0 0 0 0 2
+cmd 80 10 0 0 0 0 0 0 0

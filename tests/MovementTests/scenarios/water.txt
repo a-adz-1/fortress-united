@@ -1,0 +1,13 @@
+# Walk into a pool, sink, swim up, swim to the edge and jump out
+physinfo tfc 1
+box -4096 -4096 -64 200 4096 0
+box 200 -4096 -264 600 4096 -200
+box 600 -4096 -264 4096 4096 0
+water 200 -4096 -200 600 4096 -8
+origin 0 0 36
+maxspeed 400
+cmd 80 10 0 0 0 400 0 0 8
+cmd 100 10 0 0 0 0 0 0 0
+cmd 60 10 -60 0 0 400 0 0 8
+cmd 150 10 -10 0 0 400 0 0 10
+cmd 60 10 0 0 0 400 0 0 8

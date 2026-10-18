@@ -1,0 +1,8 @@
+# Same jumps at 1000 fps and 60 fps command rates
+physinfo tfc 1
+box -8192 -8192 -64 8192 8192 0
+origin 0 0 36
+maxspeed 400
+cmd 300 1 0 0 0 400 0 0 10
+cmd 40 16 0 0 0 0 400 0 1026 0 3 0
+cmd 40 16 0 0 0 0 0 0 0

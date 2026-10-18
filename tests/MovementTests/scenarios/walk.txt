@@ -1,0 +1,9 @@
+# Run forward on flat ground, turn, then stop (acceleration, friction)
+physinfo tfc 1
+box -4096 -4096 -64 4096 4096 0
+origin 0 0 36
+maxspeed 400
+cmd 20 10 0 0 0 0 0 0 0
+cmd 150 10 0 0 0 400 0 0 8
+cmd 100 10 0 0 0 400 0 0 8 0 0.9 0
+cmd 100 10 0 90 0 0 0 0 0

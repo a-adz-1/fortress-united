@@ -42,6 +42,20 @@ community map tools and server features built in.
 4. Before adding art, install Git LFS (`git lfs install`) and add LFS rules
    for textures, models and audio, so the repository stays small.
 
+## Tests
+
+`tests/run-movement-tests.sh` builds the engine-free Core with the .NET 8 SDK
+and runs the differential movement tests: each scenario in
+`tests/MovementTests/scenarios/` is run through `PlayerMovement` and compared
+tick by tick with the trace the original TFC movement code produced
+(`tests/MovementTests/expected/`, recorded with tfc-decomp's
+`tools/movetest`). To add a scenario, write the `.txt`, record its trace with
+`build/movetest bin/legacy/tfc.so <scenario> > expected/<name>.trace` in
+tfc-decomp, and run the tests.
+
 ## Status
 
-Just started. See `docs/roadmap.md`.
+- Movement core ported and matching the original on all 9 scenarios
+  (walking, bunny hopping, stairs, ramps, crouching, water, ladders,
+  falling, 1000/60 fps).
+- Next: see `docs/roadmap.md`.

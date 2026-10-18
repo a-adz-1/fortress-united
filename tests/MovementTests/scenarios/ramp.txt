@@ -1,0 +1,10 @@
+# Walk up a 30 degree ramp, jump on it
+physinfo tfc 1
+box -4096 -4096 -64 4096 4096 0
+# 30 degree ramp rising along +x from x=100: normal (-0.5, 0, 0.8660254)
+brush -0.5 0 0.8660254 -50  0 0 -1 0  0 -1 0 200  0 1 0 200  1 0 0 400  -1 0 0 -100
+origin 0 0 36
+maxspeed 400
+cmd 150 10 0 0 0 400 0 0 8
+cmd 10 10 0 0 0 400 0 0 10
+cmd 100 10 0 0 0 0 0 0 0

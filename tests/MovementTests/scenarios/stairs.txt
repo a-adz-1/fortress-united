@@ -1,0 +1,11 @@
+# Walk up and down 16-unit steps (step-up logic, 18 step size)
+physinfo tfc 1
+box -4096 -4096 -64 4096 4096 0
+box 100 -200 0 4096 200 16
+box 140 -200 16 4096 200 32
+box 180 -200 32 4096 200 48
+box 220 -200 48 300 200 64
+origin 0 0 36
+maxspeed 300
+cmd 120 10 0 0 0 300 0 0 8
+cmd 120 10 0 180 0 300 0 0 8

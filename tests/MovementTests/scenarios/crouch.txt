@@ -1,0 +1,14 @@
+# Crouch, crouch-walk under a low ceiling, try to stand under it, crouch-jump
+physinfo tfc 1
+box -4096 -4096 -64 4096 4096 0
+box 100 -200 50 400 200 200
+origin 0 0 36
+maxspeed 400
+cmd 10 10 0 0 0 0 0 0 0
+cmd 60 10 0 0 0 400 0 0 12
+cmd 50 10 0 0 0 400 0 0 8
+cmd 80 10 0 180 0 400 0 0 12
+cmd 20 10 0 180 0 0 0 0 0
+cmd 5 10 0 180 0 0 0 0 6
+cmd 60 10 0 180 0 0 0 0 4
+cmd 60 10 0 180 0 0 0 0 0

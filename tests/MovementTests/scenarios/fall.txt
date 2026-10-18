@@ -1,0 +1,8 @@
+# Run off a high ledge (edge friction, fall velocity, landing punch), then a small drop
+physinfo tfc 1
+box -4096 -4096 -1064 4096 4096 -1000
+box -4096 -4096 -64 200 4096 0
+origin 0 0 36
+maxspeed 400
+cmd 30 10 0 0 0 400 0 0 8
+cmd 200 10 0 0 0 0 0 0 0
