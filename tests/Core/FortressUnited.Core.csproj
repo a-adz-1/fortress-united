@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Builds Assets/FortressUnited/Core outside Unity against .NET Standard
+       2.1 and C# 9, the API level and language version Unity 6 scripts get,
+       so anything Unity can't compile fails here too. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RootNamespace>FortressUnited.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/FortressUnited/Core/**/*.cs" />
+  </ItemGroup>
+</Project>
