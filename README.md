@@ -1,0 +1,47 @@
+# Fortress United
+
+A free, community-run class-based team shooter for Unity 6, inspired by Team
+Fortress Classic: TFC's movement, classes and flag game, with modern art,
+community map tools and server features built in.
+
+**Private repository** while the game takes shape.
+
+## Ground rules
+
+- **Free, always.** No paid features, cosmetics or early-access sales.
+  Donations for servers are fine if they unlock nothing.
+- **Our own name, art, sounds and maps.** Nothing of Valve's ships: no
+  models, sounds, sprites, maps, logos or fonts. "Team Fortress" is Valve's
+  trademark; describe the game as "inspired by Team Fortress Classic".
+- **TFC is the spec, not the source.** The reconstructed TFC code (separate
+  private repo `tfc-decomp`) tells us exactly how the original behaves. We
+  port closely only where feel depends on it (movement, weapon and grenade
+  timings, goal logic) and write everything else ourselves.
+- **Every feel-critical system is tested against the original.** Movement
+  and goal logic get differential tests: the same inputs through the
+  faithful TFC build and through ours must give the same results.
+
+## Layout
+
+| Path | Contents |
+|------|----------|
+| `Assets/FortressUnited/Core/` | Game rules in plain C# with no Unity dependency (movement first). Testable without the editor. |
+| `Assets/FortressUnited/Game/` | Unity-side gameplay (players, weapons, goals) built on Core. |
+| `Assets/FortressUnited/Net/` | Networking. |
+| `Assets/FortressUnited/Scenes`, `Art`, `Materials`, `Prefabs` | Unity content. |
+| `Packages/manifest.json` | Unity packages: URP, Input System, UI. |
+| `docs/` | Design and roadmap. |
+
+## Opening the project
+
+1. Install Unity Hub and a Unity 6 editor (6000.x) with Linux build support.
+2. In Unity Hub: **Add > Add project from disk**, pick this folder.
+3. The first open generates `ProjectSettings/` and `Library/` and may update
+   package versions to match your editor; commit `ProjectSettings/` and the
+   updated `Packages/` files afterwards.
+4. Before adding art, install Git LFS (`git lfs install`) and add LFS rules
+   for textures, models and audio, so the repository stays small.
+
+## Status
+
+Just started. See `docs/roadmap.md`.
