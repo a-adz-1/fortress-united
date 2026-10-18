@@ -34,7 +34,8 @@ community map tools and server features built in.
 
 ## Opening the project
 
-1. Install Unity Hub and a Unity 6 editor (6000.x) with Linux build support.
+1. Install Unity Hub and a Unity 6 editor (6000.x) with Linux build support:
+   step-by-step guide in `docs/unity-setup.md`.
 2. In Unity Hub: **Add > Add project from disk**, pick this folder.
 3. The first open generates `ProjectSettings/` and `Library/` and may update
    package versions to match your editor; commit `ProjectSettings/` and the
