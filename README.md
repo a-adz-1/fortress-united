@@ -30,7 +30,9 @@ community map tools and server features built in.
 | `Assets/FortressUnited/Net/` | Networking. |
 | `Assets/FortressUnited/Scenes`, `Art`, `Materials`, `Prefabs` | Unity content. |
 | `Packages/manifest.json` | Unity packages: URP, Input System, UI. |
-| `docs/` | Design and roadmap. |
+| `docs/` | Design, roadmap, Unity setup guide, map texture inventory. |
+| `tools/TrenchBroom/` | TrenchBroom game config and entity definitions for mappers. |
+| `tests/` | `Core/` (builds Core as .NET Standard 2.1 like Unity), `MovementTests/`, `MapTools/` (texture inventory, map reader checks). |
 
 ## Opening the project
 
@@ -59,4 +61,12 @@ tfc-decomp, and run the tests.
 - Movement core ported and matching the original on all 9 scenarios
   (walking, bunny hopping, stairs, ramps, crouching, water, ladders,
   falling, 1000/60 fps).
+- Map pipeline started: `FortressUnited.Core.Maps` reads compiled GoldSrc
+  maps (BSP v30: entities, face polygons, textures, texture axes, brush
+  models, leaves) and `.map` sources (Valve 220 and classic formats, brush
+  polygons). Checked on all 89 maps here (760,280 faces, no problems).
+- Texture inventory of the user's 71 maps: `docs/maps/texture-inventory.md`
+  (311 textures cover 90% of drawn surfaces).
+- TrenchBroom game config with TFC-accurate entity definitions:
+  `tools/TrenchBroom/`.
 - Next: see `docs/roadmap.md`.

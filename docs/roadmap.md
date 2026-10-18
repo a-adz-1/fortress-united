@@ -8,7 +8,7 @@
 2. **Greybox and a character controller.** A Unity scene with one map
    imported as boxes, a first-person controller driving the movement core,
    Input System bindings.
-3. **Map pipeline.** TrenchBroom config + FGD for the goal entities; `.map`
+3. **Map pipeline (started: BSP/.map readers, texture inventory, TrenchBroom config done; next the Unity importer and material mapping table).** TrenchBroom config + FGD for the goal entities; `.map`
    / `.bsp` importer; texture inventory of the user's maps and the first
    material mapping table.
 4. **Networking.** Choose the netcode (Netcode for Entities / for

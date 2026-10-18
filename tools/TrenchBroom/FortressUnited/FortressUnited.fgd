@@ -1,0 +1,426 @@
+// Fortress United entity definitions for TrenchBroom (and other FGD editors).
+//
+// The goal entities and keys follow Team Fortress Classic's map format
+// exactly (keys, short aliases and flag bits as the TFC game code reads
+// them), so existing TFC maps import with their logic intact and mappers'
+// TFC knowledge carries over. Fortress United additions are marked "FU".
+
+// ---------------------------------------------------------------------------
+// Base classes
+
+@BaseClass = Targetname [ targetname(target_source) : "Name" ]
+@BaseClass = Target [ target(target_destination) : "Target" ]
+
+@BaseClass = Team
+[
+	team_no(choices) : "Team" : 0 =
+	[
+		0 : "Any"
+		1 : "Blue"
+		2 : "Red"
+		3 : "Yellow"
+		4 : "Green"
+	]
+]
+
+@BaseClass = PlayerClass
+[
+	playerclass(choices) : "Player class" : 0 =
+	[
+		0 : "Any"
+		1 : "Scout"
+		2 : "Sniper"
+		3 : "Soldier"
+		4 : "Demoman"
+		5 : "Medic"
+		6 : "HWGuy"
+		7 : "Pyro"
+		8 : "Spy"
+		9 : "Engineer"
+		11 : "Civilian"
+	]
+]
+
+// Who may activate a goal or pick up an item ("AP" = activating player)
+@BaseClass base(Team, PlayerClass) = APCriteria
+[
+	items_allowed(integer) : "Items: player must carry goal item no." : 0
+	has_item_from_group(integer) : "Player must have an item from group (h_i_g)" : 0
+	hasnt_item_from_group(integer) : "Player must not have an item from group (hn_i_g)" : 0
+	if_goal_is_active(integer) : "Only if goal no. is active" : 0
+	if_goal_is_inactive(integer) : "Only if goal no. is inactive" : 0
+	if_goal_is_removed(integer) : "Only if goal no. is removed" : 0
+	if_group_is_active(integer) : "Only if group no. is active" : 0
+	if_group_is_inactive(integer) : "Only if group no. is inactive" : 0
+	if_group_is_removed(integer) : "Only if group no. is removed" : 0
+	if_item_has_moved(integer) : "Only if item no. has moved" : 0
+	if_item_hasnt_moved(integer) : "Only if item no. hasn't moved" : 0
+	owned_by(choices) : "Owned by team" : 0 =
+	[
+		0 : "None"
+		1 : "Blue"
+		2 : "Red"
+		3 : "Yellow"
+		4 : "Green"
+	]
+]
+
+// Messages shown and sounds played when a goal activates
+@BaseClass = TFMessages
+[
+	broadcast(string) : "Centre message to everyone (b_b)"
+	team_broadcast(string) : "Message to AP's team (b_t)"
+	non_team_broadcast(string) : "Message to other teams (b_n)"
+	owners_team_broadcast(string) : "Message to owner's team (b_o)"
+	non_owners_team_broadcast(string) : "Message to non-owners"
+	netname_broadcast(string) : "Everyone, prefixed with AP name (n_b)"
+	netname_team_broadcast(string) : "AP's team, prefixed with AP name (n_t)"
+	netname_non_team_broadcast(string) : "Other teams, prefixed with AP name (n_n)"
+	netname_owners_team_broadcast(string) : "Owner's team, prefixed with AP name (n_o)"
+	message(string) : "Message to the AP"
+	noise(sound) : "Sound to play"
+	speak(string) : "Spoken to everyone"
+	AP_speak(string) : "Spoken to the AP"
+	team_speak(string) : "Spoken to AP's team"
+	non_team_speak(string) : "Spoken to other teams"
+	owners_team_speak(string) : "Spoken to owner's team"
+	non_owners_team_speak(string) : "Spoken to non-owners"
+]
+
+// What happens when a goal activates
+@BaseClass = TFResults
+[
+	goal_result(flags) =
+	[
+		1 : "Only activate once" : 0
+		2 : "Goals it activates give their bonuses" : 0
+		4 : "End the game (intermission)" : 0
+		8 : "Goal items it gives do no results" : 0
+		16 : "Remove spy disguise" : 0
+		32 : "Force the player to respawn" : 0
+		64 : "Destroy the player's buildings" : 0
+	]
+	goal_effects(flags) =
+	[
+		1 : "Affect the AP (default)" : 1
+		2 : "Affect the AP's whole team" : 0
+		4 : "Affect everyone except the AP's team" : 0
+		8 : "Affect everyone except the AP" : 0
+		16 : "Walls block the radius" : 0
+		32 : "Only players in the same environment (water/air)" : 0
+		64 : "Timer goals check criteria for every player" : 0
+	]
+	t_length(integer) : "Effect radius (0 = AP only)" : 0
+	activate_goal_no(integer) : "Activate goal no. (a_g)" : 0
+	inactivate_goal_no(integer) : "Inactivate goal no. (i_g)" : 0
+	remove_goal_no(integer) : "Remove goal no. (r_g)" : 0
+	restore_goal_no(integer) : "Restore goal no. (rs_g)" : 0
+	activate_group_no(integer) : "Activate group no." : 0
+	inactivate_group_no(integer) : "Inactivate group no." : 0
+	remove_group_no(integer) : "Remove group no. (r_gr)" : 0
+	restore_group_no(integer) : "Restore group no. (rs_gr)" : 0
+	else_goal(integer) : "Goal to activate if criteria fail" : 0
+	remove_item_group(integer) : "Remove items of group from AP (r_i_g)" : 0
+	return_item_no(integer) : "Return item no. to its spawn" : 0
+	remove_spawnpoint(integer) : "Remove spawn point (goal no.)" : 0
+	restore_spawnpoint(integer) : "Restore spawn point (goal no.)" : 0
+	remove_spawngroup(integer) : "Remove spawn group" : 0
+	restore_spawngroup(integer) : "Restore spawn group" : 0
+	increase_team(integer) : "Score given to the AP's team" : 0
+	increase_team1(integer) : "Score given to Blue" : 0
+	increase_team2(integer) : "Score given to Red" : 0
+	increase_team3(integer) : "Score given to Yellow" : 0
+	increase_team4(integer) : "Score given to Green" : 0
+	increase_team_owned_by(integer) : "Score given to the owning team" : 0
+	frags(integer) : "Frags given to the AP" : 0
+	health(integer) : "Health given (negative hurts)" : 0
+	armorvalue(integer) : "Armour given" : 0
+	armortype(string) : "Armour type (0-0.8)"
+	armorclass(integer) : "Armour class" : 0
+	ammo_shells(integer) : "Shells given" : 0
+	ammo_nails(integer) : "Nails given" : 0
+	ammo_rockets(integer) : "Rockets given" : 0
+	ammo_cells(integer) : "Cells given" : 0
+	ammo_medikit(integer) : "Medikit ammo given" : 0
+	ammo_detpack(integer) : "Detpacks given" : 0
+	no_grenades_1(integer) : "Primary grenades given" : 0
+	no_grenades_2(integer) : "Secondary grenades given" : 0
+	invincible_finished(integer) : "Invincibility (seconds)" : 0
+	invisible_finished(integer) : "Invisibility (seconds)" : 0
+	super_damage_finished(integer) : "Quad damage (seconds)" : 0
+	radsuit_finished(integer) : "Environment suit (seconds)" : 0
+	items(integer) : "Goal items given (item goal no.)" : 0
+	wait(string) : "Seconds before it can activate again" : "0"
+	delay_time(string) : "Delay before results (seconds)" : "0"
+	killtarget(target_destination) : "Remove this entity"
+	endround_time(string) : "Round end: seconds the end lasts"
+	endround_owned_by(integer) : "Round end: team that owns" : 0
+	endround_team1(string) : "Round end message: Blue"
+	endround_team2(string) : "Round end message: Red"
+	endround_team3(string) : "Round end message: Yellow"
+	endround_team4(string) : "Round end message: Green"
+]
+
+@BaseClass = TFGoalCommon
+[
+	goal_no(integer) : "Goal number (unique)" : 0
+	group_no(integer) : "Group number" : 0
+	goal_state(choices) : "Starting state" : 2 =
+	[
+		1 : "Active"
+		2 : "Inactive"
+		3 : "Removed"
+	]
+	netname(string) : "Name shown in messages"
+	mdl(studio) : "Model"
+	skin(integer) : "Skin" : 0
+]
+
+// ---------------------------------------------------------------------------
+// World
+
+@SolidClass = worldspawn : "World"
+[
+	message(string) : "Map title"
+	skyname(string) : "Sky name"
+	light(integer) : "Default light level"
+	fu_theme(choices) : "FU: material theme" : "default" =
+	[
+		"default" : "Default"
+		"castle" : "Castle / fort"
+		"desert" : "Desert"
+		"industrial" : "Industrial"
+		"space" : "Space / sci-fi"
+		"nature" : "Nature / outdoor"
+		"snow" : "Snow"
+		"urban" : "Urban"
+	]
+]
+
+// ---------------------------------------------------------------------------
+// Team Fortress map logic
+
+@PointClass base(Targetname) size(-16 -16 -16, 16 16 16) color(255 255 0) = info_tfdetect : "TF map settings (one per map)"
+[
+	number_of_teams(integer) : "Number of teams" : 2
+	team1_name(string) : "Blue team name"
+	team2_name(string) : "Red team name"
+	team3_name(string) : "Yellow team name"
+	team4_name(string) : "Green team name"
+	team_broadcast(string) : "Team menu text"
+	team1_allies(integer) : "Blue allies (bits)" : 0
+	team2_allies(integer) : "Red allies (bits)" : 0
+	team3_allies(integer) : "Yellow allies (bits)" : 0
+	team4_allies(integer) : "Green allies (bits)" : 0
+	ammo_shells(integer) : "Team lives: Blue (0 = unlimited)" : 0
+	ammo_nails(integer) : "Team lives: Red (0 = unlimited)" : 0
+	ammo_rockets(integer) : "Team lives: Yellow (0 = unlimited)" : 0
+	ammo_cells(integer) : "Team lives: Green (0 = unlimited)" : 0
+	ammo_medikit(integer) : "Max players: Blue (0 = no limit)" : 0
+	ammo_detpack(integer) : "Max players: Red (0 = no limit)" : 0
+	maxammo_medikit(integer) : "Max players: Yellow (0 = no limit)" : 0
+	maxammo_detpack(integer) : "Max players: Green (0 = no limit)" : 0
+	playerclass(integer) : "Illegal classes for all teams (bits)" : 0
+	maxammo_shells(integer) : "Illegal classes: Blue (bits; -1 = civilians only)" : 0
+	maxammo_nails(integer) : "Illegal classes: Red (bits; -1 = civilians only)" : 0
+	maxammo_rockets(integer) : "Illegal classes: Yellow (bits; -1 = civilians only)" : 0
+	maxammo_cells(integer) : "Illegal classes: Green (bits; -1 = civilians only)" : 0
+	display_item_status1(integer) : "flaginfo: item no. 1" : 0
+	display_item_status2(integer) : "flaginfo: item no. 2" : 0
+	display_item_status3(integer) : "flaginfo: item no. 3" : 0
+	display_item_status4(integer) : "flaginfo: item no. 4" : 0
+	team_str_home(string) : "flaginfo: own item at home"
+	team_str_moved(string) : "flaginfo: own item dropped"
+	team_str_carried(string) : "flaginfo: own item carried"
+	non_team_str_home(string) : "flaginfo: enemy item at home"
+	non_team_str_moved(string) : "flaginfo: enemy item dropped"
+	non_team_str_carried(string) : "flaginfo: enemy item carried"
+	message(string) : "Server commands run at map start"
+]
+
+@PointClass base(Targetname, Target, TFGoalCommon, APCriteria, TFMessages) size(-16 -16 -36, 16 16 36) color(0 128 255) = info_player_teamspawn : "Team spawn point (i_p_t)"
+[
+	message(string) : "Message when spawning here"
+	items(integer) : "Goal item given on spawn" : 0
+	goal_activation(flags) =
+	[
+		1 : "Give the item to multiple players" : 0
+		2 : "Show the message every time" : 0
+	]
+	goal_effects(flags) =
+	[
+		1 : "Remove after one use" : 0
+	]
+]
+
+@PointClass base(Targetname, Target, TFGoalCommon, APCriteria, TFMessages, TFResults) size(-16 -16 -16, 16 16 16) color(255 128 0) = info_tfgoal : "Goal (i_t_g): activated by touch, spanner, detpack, or another goal"
+[
+	goal_activation(flags) =
+	[
+		1 : "Activated when touched" : 1
+		2 : "Activated by a detpack explosion" : 0
+		4 : "Reverse criteria (AP must NOT match)" : 0
+		8 : "Activated by an engineer's spanner" : 0
+		2048 : "Drop to ground when spawning" : 0
+	]
+	pausetime(string) : "Seconds before it resets (active again)" : "0"
+]
+
+@SolidClass base(Targetname, Target, TFGoalCommon, APCriteria, TFMessages, TFResults) = i_t_g : "Brush goal: activated when touched (capture zones, doors, ...)"
+[
+	goal_activation(flags) =
+	[
+		1 : "Activated when touched" : 1
+		2 : "Activated by a detpack explosion" : 0
+		4 : "Reverse criteria (AP must NOT match)" : 0
+		8 : "Activated by an engineer's spanner" : 0
+	]
+	pausetime(string) : "Seconds before it resets (active again)" : "0"
+]
+
+@PointClass base(Targetname, Target, TFGoalCommon, APCriteria, TFMessages, TFResults) size(-16 -16 -16, 16 16 16) color(255 0 255) = info_tfgoal_timer : "Timer goal (i_t_t): activates every search_time seconds"
+[
+	search_time(string) : "Seconds between activations" : "10"
+]
+
+@PointClass base(Targetname, Target, TFGoalCommon, APCriteria, TFMessages, TFResults) size(-16 -16 -16, 16 16 16) color(0 255 0) studio() = item_tfgoal : "Goal item: flags, keys, ..."
+[
+	goal_activation(flags) =
+	[
+		1 : "Carrier glows" : 1
+		2 : "Carrier moves at half speed" : 0
+		4 : "Dropped when the carrier dies" : 1
+		8 : "Returns home when the carrier dies" : 0
+		16 : "Returns home if removed by a goal" : 0
+		32 : "Returns home if left on the ground" : 0
+		64 : "Reverse pickup criteria" : 0
+		128 : "Removed if left 2 minutes on the ground" : 0
+		256 : "Kept when the carrier dies" : 0
+		512 : "Glows on the ground" : 0
+		1024 : "Keep results when removed" : 0
+		2048 : "Drop to ground when spawning" : 0
+		4096 : "Can be dropped by the carrier" : 1
+		8192 : "Solid (blocks bullets)" : 0
+	]
+	pausetime(string) : "Seconds on the ground before returning home" : "60"
+	distance(integer) : "Speed reduction for the carrier" : 0
+	speed_reduction(integer) : "Speed reduction (percent)" : 0
+	noise4(sound) : "Sound when returned"
+	team_drop(string) : "Message to own team when dropped (d_t)"
+	non_team_drop(string) : "Message to other teams when dropped (d_n)"
+	netname_team_drop(string) : "Own team, with carrier name"
+	netname_non_team_drop(string) : "Other teams, with carrier name"
+	org_team_broadcast(string) : "Message to own team when returned"
+	org_non_team_broadcast(string) : "Message to other teams when returned"
+	replacement_model(studio) : "Carrier's model while carrying"
+	replacement_model_body(integer) : "Carrier model body" : 0
+	replacement_model_skin(integer) : "Carrier model skin" : 0
+]
+
+@SolidClass base(Targetname) = func_nobuild : "Engineers can't build here" []
+@SolidClass base(Targetname) = func_nogrenades : "Grenades don't explode here" []
+
+// FU: spawn protection (replaces the dustbowl spawn-guard plugin)
+@SolidClass base(Targetname, Team) = func_spawnguard : "FU: kills enemies of the team that enter (spawn doorways)"
+[
+	message(string) : "Message to players it kills"
+]
+
+// ---------------------------------------------------------------------------
+// Common brush entities
+
+@SolidClass base(Targetname) = func_wall : "Wall (brush entity)"
+[
+	rendermode(choices) : "Render mode" : 0 = [ 0 : "Normal" 2 : "Texture" 4 : "Solid" 5 : "Additive" ]
+	renderamt(integer) : "Opacity (0-255)" : 255
+]
+
+@SolidClass base(Targetname) = func_illusionary : "Non-solid brush" []
+
+@SolidClass base(Targetname, Target) = func_door : "Door"
+[
+	speed(integer) : "Speed" : 100
+	wait(string) : "Delay before closing (-1 stays open)" : "4"
+	lip(integer) : "Lip" : 0
+	dmg(integer) : "Damage when blocked" : 0
+	angle(integer) : "Move direction (yaw, -1 up, -2 down)" : 0
+	team_no(integer) : "Only this team opens it" : 0
+	spawnflags(flags) =
+	[
+		1 : "Starts open" : 0
+		32 : "Toggle" : 0
+		256 : "Use only" : 0
+	]
+]
+
+@SolidClass base(Targetname, Target) = func_door_rotating : "Rotating door"
+[
+	speed(integer) : "Speed" : 100
+	distance(integer) : "Degrees to rotate" : 90
+	wait(string) : "Delay before closing" : "4"
+	team_no(integer) : "Only this team opens it" : 0
+]
+
+@SolidClass base(Targetname, Target) = func_button : "Button"
+[
+	speed(integer) : "Speed" : 5
+	wait(string) : "Delay before reset (-1 stays pressed)" : "3"
+	angle(integer) : "Move direction" : 0
+]
+
+@SolidClass base(Targetname) = func_water : "Water volume (moving water)"
+[
+	skin(choices) : "Contents" : -3 = [ -3 : "Water" -4 : "Slime" -5 : "Lava" ]
+	WaveHeight(string) : "Wave height" : "0"
+]
+
+@SolidClass base(Targetname) = func_ladder : "Ladder volume" []
+
+@SolidClass base(Targetname, Target) = trigger_multiple : "Trigger (repeatable)"
+[
+	wait(string) : "Delay before it can trigger again" : "0.2"
+]
+
+@SolidClass base(Targetname, Target) = trigger_once : "Trigger (once)" []
+
+@SolidClass base(Targetname) = trigger_push : "Push volume"
+[
+	speed(integer) : "Speed" : 100
+	angles(string) : "Push direction (pitch yaw roll)" : "0 0 0"
+]
+
+@SolidClass base(Targetname) = trigger_hurt : "Damage volume"
+[
+	dmg(integer) : "Damage per second" : 10
+]
+
+@SolidClass base(Targetname, Target) = trigger_teleport : "Teleport volume" []
+
+@PointClass base(Targetname) size(-16 -16 0, 16 16 72) color(0 255 255) = info_teleport_destination : "Teleport destination"
+[
+	angles(string) : "Facing (pitch yaw roll)" : "0 0 0"
+]
+
+// ---------------------------------------------------------------------------
+// Lights
+
+@PointClass base(Targetname) size(-8 -8 -8, 8 8 8) color(255 255 128) = light : "Light"
+[
+	_light(color255) : "Colour and brightness" : "255 255 255 200"
+	style(integer) : "Style" : 0
+]
+
+@PointClass base(Targetname, Target) size(-8 -8 -8, 8 8 8) color(255 255 128) = light_spot : "Spotlight"
+[
+	_light(color255) : "Colour and brightness" : "255 255 255 200"
+	_cone(integer) : "Inner cone" : 30
+	_cone2(integer) : "Outer cone" : 45
+	pitch(integer) : "Pitch" : -90
+]
+
+@PointClass size(-8 -8 -8, 8 8 8) color(255 255 0) = light_environment : "Sun / sky light"
+[
+	_light(color255) : "Sun colour and brightness" : "255 255 255 200"
+	pitch(integer) : "Sun pitch" : -90
+	angles(string) : "Sun direction (pitch yaw roll)" : "0 0 0"
+]
