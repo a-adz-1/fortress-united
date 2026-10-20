@@ -7,7 +7,8 @@ prepare_model.py has made Art/Grenades/PipeBomb.fbx and its textures).
 
 From the user's reference: the outer bands and end rings glow in the team
 colour, and the window down the middle and the end-cap centres glow in the
-bomb type's colour (green or blue). The bands are found by their light grey
+bomb type's colour: green for detonated pipe bombs (right click), blue for
+grenade launcher grenades. The bands are found by their light grey
 paint; the window (the recess on one side of the middle section) and the
 end-cap centres by shape, on the full-detail Meshy model (it shares its
 texture layout with the thinned one, so the masks fit both).
