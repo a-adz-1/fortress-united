@@ -726,6 +726,32 @@ namespace FortressUnited.Game
         /// </summary>
         void Probe()
         {
+            // DEMO_DUMP_MAT=name logs that map material at frame 100 and saves its texture
+            var matName = System.Environment.GetEnvironmentVariable("DEMO_DUMP_MAT");
+            if (!string.IsNullOrEmpty(matName) && frame == 100)
+            {
+                foreach (var r in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+                {
+                    var m = r.sharedMaterial;
+                    if (m == null || m.name != matName) continue;
+                    var tex = m.GetTexture("_BaseMap");
+                    var mesh = r.GetComponent<MeshFilter>().sharedMesh;
+                    var uvs = new List<Vector2>();
+                    mesh.GetUVs(0, uvs);
+                    Vector2 lo = Vector2.positiveInfinity, hi = Vector2.negativeInfinity;
+                    foreach (var uv in uvs) { lo = Vector2.Min(lo, uv); hi = Vector2.Max(hi, uv); }
+                    Debug.Log($"Demo mat: {m.name} shader {m.shader.name} tex {(tex ? tex.name + " " + tex.GetType().Name : "none")} ST {m.GetTextureScale("_BaseMap")} {m.GetTextureOffset("_BaseMap")} colour {m.GetColor("_BaseColor")} uv {lo}..{hi} verts {mesh.vertexCount}");
+                    if (tex is RenderTexture rtex)
+                    {
+                        var prev = RenderTexture.active;
+                        RenderTexture.active = rtex;
+                        var t = new Texture2D(rtex.width, rtex.height, TextureFormat.RGB24, false);
+                        t.ReadPixels(new Rect(0, 0, rtex.width, rtex.height), 0, 0);
+                        RenderTexture.active = prev;
+                        File.WriteAllBytes(Path.Combine(OutputDir, "mat_" + m.name + ".png"), t.EncodeToPNG());
+                    }
+                }
+            }
             var spec = System.Environment.GetEnvironmentVariable("DEMO_PROBE");
             if (string.IsNullOrEmpty(spec)) return;
             var p = spec.Split(':');

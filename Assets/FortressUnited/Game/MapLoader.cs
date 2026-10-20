@@ -159,13 +159,15 @@ namespace FortressUnited.Game
             var texture = Bsp.Textures[tex];
             float w = Math.Max(1, texture.Width), h = Math.Max(1, texture.Height);
             // Logos are fitted to each face (centred, aspect kept) rather than tiled the old way
-            bool fit = UseWorldMaterials && WorldMaterials.ModeOf(texture.Name) == "logo";
+            string look = UseWorldMaterials ? WorldMaterials.ModeOf(texture.Name) : null;
+            bool fit = look == "logo";
+            bool stretch = look == "light" || look == "sign";      // light panels and signs fill their face
             var verts = new List<Vector3>();
             var norms = new List<Vector3>();
             var uvs = new List<Vector2>();
             var sizes = new List<Vector2>();      // each face's narrower width (m), for the surface shader
             var tris = new List<int>();
-            var logoBounds = fit ? LogoGroups(faces, w, h) : null;
+            var logoBounds = fit || stretch ? LogoGroups(faces, w, h) : null;
 
             bool seeThrough = texture.Name.StartsWith("{");
             // Lights, signs and logos are often thin brushes laid flush on a wall or ceiling;
@@ -194,6 +196,8 @@ namespace FortressUnited.Game
                 }
                 if (fit)
                     FitUVs(uvs, first, logoBounds[fi]);
+                else if (stretch)
+                    StretchUVs(uvs, first, logoBounds[fi]);
                 // How wide the face is across its narrower direction: small faces (window
                 // reveals, trims, sills) get a plain finish rather than shrunken detail
                 Vector3 axisA = Vector3.Cross(un, Mathf.Abs(un.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
@@ -313,6 +317,15 @@ namespace FortressUnited.Game
             var result = new Rect[n];
             for (int i = 0; i < n; i++) result[i] = group[Root(i)];
             return result;
+        }
+
+        /// <summary>Maps one face's UVs (from first on) so its group's area fills 0..1 on both axes.</summary>
+        static void StretchUVs(List<Vector2> uvs, int first, Rect area)
+        {
+            Vector2 size = area.max - area.min;
+            if (size.x <= 0 || size.y <= 0) return;
+            for (int k = first; k < uvs.Count; k++)
+                uvs[k] = new Vector2((uvs[k].x - area.xMin) / size.x, (uvs[k].y - area.yMin) / size.y);
         }
 
         /// <summary>Rescales one face's UVs (from first on) so its logo area maps to 0..1 around the middle, keeping the aspect.</summary>

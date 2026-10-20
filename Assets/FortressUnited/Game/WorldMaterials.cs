@@ -81,8 +81,11 @@ namespace FortressUnited.Game
             {
                 case "panel": MakePanels(mat, team, rgba, metal: false); return;
                 case "metal": MakePanels(mat, team, rgba, metal: true); return;
-                case "light": Glow(mat, original, 1.6f); return;
-                case "sign": MakeHoloSign(mat, rgba, texWidth, texHeight); return;
+                case "light": MakeLightPanel(mat, rgba); return;
+                case "sign":
+                    if (!MakeNeonSign(mat, name, rgba, texWidth, texHeight))
+                        MakeHoloSign(mat, rgba, texWidth, texHeight);
+                    return;
                 case "glass": MakeGlass(mat, team); return;
                 case "logo": MakeLogo(mat, team); return;
             }
@@ -199,6 +202,80 @@ namespace FortressUnited.Game
             }
         }
 
+        /// <summary>
+        /// A light fixture as a modern LED panel: a thin dark metal bezel round a frosted
+        /// diffuser that glows in the old fixture's colour (the mean of its brightest
+        /// pixels), a touch brighter in the middle, with a fine bright rim. The loader
+        /// stretches each fixture face's UVs to 0..1, so the bezel follows its edges.
+        /// </summary>
+        static void MakeLightPanel(Material mat, byte[] rgba)
+        {
+            // The fixture's light colour, lifted to full brightness
+            Color light = new Color(1f, 0.95f, 0.88f);
+            if (rgba != null && rgba.Length >= 16)
+            {
+                var lums = new List<(float l, int i)>();
+                for (int i = 0; i + 3 < rgba.Length; i += 4)
+                    lums.Add((rgba[i] * 0.3f + rgba[i + 1] * 0.59f + rgba[i + 2] * 0.11f, i));
+                lums.Sort((a, b) => b.l.CompareTo(a.l));
+                float r = 0, g = 0, b = 0;
+                int n = Mathf.Max(1, lums.Count / 4);
+                for (int k = 0; k < n; k++) { int i = lums[k].i; r += rgba[i]; g += rgba[i + 1]; b += rgba[i + 2]; }
+                float m = Mathf.Max(r, Mathf.Max(g, b), 1);
+                light = new Color(r / m, g / m, b / m);
+                light = Color.Lerp(light, Color.white, 0.25f);          // LEDs read a little whiter than old bulbs
+            }
+            if (!lightPanels.TryGetValue(light, out var tex))
+                lightPanels[light] = tex = LightPanelTexture(light);
+            mat.SetTexture("_BaseMap", tex.albedo);
+            mat.mainTexture = tex.albedo;
+            mat.SetColor("_BaseColor", Color.white);
+            mat.SetTextureScale("_BaseMap", Vector2.one);
+            mat.SetTextureOffset("_BaseMap", Vector2.zero);
+            mat.SetFloat("_Smoothness", 0.7f);
+            mat.SetFloat("_Metallic", 0.3f);
+            mat.EnableKeyword("_EMISSION");
+            mat.SetTexture("_EmissionMap", tex.emission);
+            mat.SetColor("_EmissionColor", Color.white * 1.9f);
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+        }
+
+        static readonly Dictionary<Color, (Texture2D albedo, Texture2D emission)> lightPanels = new Dictionary<Color, (Texture2D, Texture2D)>();
+
+        static (Texture2D albedo, Texture2D emission) LightPanelTexture(Color light)
+        {
+            const int S = 256;
+            const float bezel = 0.075f, soft = 0.012f, rim = 0.012f;
+            var alb = new Color32[S * S];
+            var emi = new Color32[S * S];
+            for (int y = 0; y < S; y++)
+                for (int x = 0; x < S; x++)
+                {
+                    float u = (x + 0.5f) / S, v = (y + 0.5f) / S;
+                    float edge = Mathf.Min(Mathf.Min(u, 1 - u), Mathf.Min(v, 1 - v));       // distance to the panel edge
+                    float diffuser = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(bezel, bezel + soft, edge));
+                    float rimLine = Mathf.Clamp01(1 - Mathf.Abs(edge - bezel - soft - rim * 0.5f) / (rim * 0.5f));
+                    float centre = 1 - 0.18f * Mathf.Clamp01(new Vector2(u - 0.5f, v - 0.5f).magnitude * 2);
+                    float glow = diffuser * (0.82f * centre + 0.18f * rimLine);
+                    Color e = light * glow;
+                    emi[y * S + x] = new Color32((byte)(255 * e.r), (byte)(255 * e.g), (byte)(255 * e.b), 255);
+                    // Albedo: dark brushed bezel, pale frosted diffuser
+                    Color a = Color.Lerp(new Color(0.09f, 0.095f, 0.11f), new Color(0.85f, 0.86f, 0.88f), diffuser);
+                    alb[y * S + x] = new Color32((byte)(255 * a.r), (byte)(255 * a.g), (byte)(255 * a.b), 255);
+                }
+            Texture2D Make(Color32[] px, string name)
+            {
+                var t = new Texture2D(S, S, TextureFormat.RGBA32, true)
+                {
+                    name = name, filterMode = FilterMode.Trilinear, anisoLevel = 8, wrapMode = TextureWrapMode.Clamp,
+                };
+                t.SetPixels32(px);
+                t.Apply(true, true);
+                return t;
+            }
+            return (Make(alb, "Light Panel"), Make(emi, "Light Panel Glow"));
+        }
+
         /// <summary>Light fixtures and signs: the old texture lit from within.</summary>
         static void Glow(Material mat, Texture2D original, float strength)
         {
@@ -238,6 +315,32 @@ namespace FortressUnited.Game
             mat.SetColor("_EmissionColor", c * 0.8f);
             mat.SetTextureScale("_BaseMap", Vector2.one);
             mat.SetTextureOffset("_BaseMap", Vector2.zero);
+        }
+
+        /// <summary>
+        /// How standard signs are drawn: "neon" (re-lettered as neon tubes; unknown
+        /// signs fall back to hologram) or "hologram" (every sign as a holographic
+        /// display traced from the old artwork; may suit some maps better).
+        /// </summary>
+        public static string SignStyle = "neon";
+
+        /// <summary>A standard sign re-lettered in neon (NeonSigns) on dark gloss; false if it isn't one.</summary>
+        static bool MakeNeonSign(Material mat, string name, byte[] rgba, int w, int h)
+        {
+            if (SignStyle != "neon")
+                return false;
+            var tex = NeonSigns.Draw(name, rgba, w, h);
+            if (tex == null)
+                return false;
+            // Unlit: the sign is its own light (black backing, glowing tubes bright enough to bloom)
+            mat.shader = Shader.Find("Universal Render Pipeline/Unlit");
+            mat.SetTexture("_BaseMap", tex);
+            mat.mainTexture = tex;
+            mat.SetColor("_BaseColor", Color.white * 2.4f);
+            // Rendered images run bottom to top; map textures top to bottom
+            mat.SetTextureScale("_BaseMap", new Vector2(1, -1));
+            mat.SetTextureOffset("_BaseMap", new Vector2(0, 1));
+            return true;
         }
 
         /// <summary>
