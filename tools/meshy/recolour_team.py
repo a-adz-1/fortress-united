@@ -14,6 +14,10 @@ Glows aren't painted in: they come from emission masks tinted in the game.
     python3 tools/meshy/recolour_team.py from-blue <blue.png> <red.png>
         Writes a red team copy of a blue team texture (blue paint to red paint).
 
+    python3 tools/meshy/recolour_team.py to-gold <blue.png> <gold.png>
+    python3 tools/meshy/recolour_team.py to-violet <blue.png> <violet.png>
+        Team 3 and 4 copies of a blue team texture (paint hues 44 and 285).
+
     python3 tools/meshy/recolour_team.py from-red <red.png> <blue.png>
         Writes a blue team copy of a red team texture (saturated reds to
         hue 189), e.g. the sentry skins.
@@ -91,6 +95,10 @@ def main():
             recolour(p, p, 340, 20, 0.35, RED_HUE)
     elif sys.argv[1] == "from-red":
         recolour(sys.argv[2], sys.argv[3], 340, 20, 0.35, TARGET_HUE, 1 / BLUE_TO_RED_VALUE)
+    elif sys.argv[1] == "to-gold":
+        recolour(sys.argv[2], sys.argv[3], 150, 265, 0.25, 44 / 360, 1.05)
+    elif sys.argv[1] == "to-violet":
+        recolour(sys.argv[2], sys.argv[3], 150, 265, 0.25, 285 / 360, 0.95)
     elif sys.argv[1] == "from-blue":
         recolour(sys.argv[2], sys.argv[3], 150, 265, 0.25, RED_HUE, BLUE_TO_RED_VALUE)
     else:
