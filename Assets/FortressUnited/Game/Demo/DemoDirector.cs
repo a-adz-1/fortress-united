@@ -29,6 +29,8 @@ namespace FortressUnited.Game
         public GameObject Medic, Sentry1, Sentry2, Sentry3, Conc, Frag, Spanner, Medkit;
         [Tooltip("Record the first-person melee showcase instead of the overview.")]
         public bool MeleeShowcase;
+        [Tooltip("Where to stage: \"open\" (the most open outdoor area) or \"spawn\" (a roomy team spawn room).")]
+        public string Stage = "open";
         public GameObject Arms, ShockProd, Killswitch;
         public Texture2D ShockProdSkin, KillswitchSkin;
         public Texture2D SentryBlueSkin1, SentryBlueSkin2, SentryBlueSkin3;
@@ -100,7 +102,7 @@ namespace FortressUnited.Game
             cam.enabled = false;   // rendered by hand each frame, then saved
             readback = new Texture2D(Width, Height, TextureFormat.RGB24, false);
 
-            FindStage();
+            if (Stage == "spawn") FindSpawnStage(); else FindStage();
             StartCoroutine(MeleeShowcase ? Melee() : Script());
         }
 
@@ -150,6 +152,37 @@ namespace FortressUnited.Game
                 }
             right = Vector3.Cross(Vector3.up, fwd);
             Debug.Log($"Demo: stage at {origin}, {best:0.0} m clear all round");
+        }
+
+        /// <summary>
+        /// A team spawn point with the most room in front of it (indoors is
+        /// fine), facing its most open direction: a quieter place to stage.
+        /// </summary>
+        void FindSpawnStage()
+        {
+            var world = GetComponent<MapLoader>().World;
+            float best = -1;
+            foreach (var sp in world.SpawnPoints(1))
+            {
+                Vector3 at = GoldSrcSpace.ToUnity(sp.Origin);
+                if (!Physics.Raycast(at + Vector3.up * 0.5f, Vector3.down, out var floor, 4))
+                    continue;
+                at = floor.point;
+                // room: clear distance in the most open direction, with space either side
+                for (int i = 0; i < 16; i++)
+                {
+                    var d = Quaternion.Euler(0, i * 22.5f, 0) * Vector3.forward;
+                    float ahead = Physics.Raycast(at + Vector3.up * 1.2f, d, out var h, 15) ? h.distance : 15;
+                    var l = Quaternion.Euler(0, -60, 0) * d; var r = Quaternion.Euler(0, 60, 0) * d;
+                    float sides = Mathf.Min(Physics.Raycast(at + Vector3.up * 1.2f, l, out var hl, 6) ? hl.distance : 6,
+                                            Physics.Raycast(at + Vector3.up * 1.2f, r, out var hr, 6) ? hr.distance : 6);
+                    float score = Mathf.Min(ahead, 6) + Mathf.Min(sides, 3);
+                    if (score > best) { best = score; origin = at; fwd = d; }
+                }
+            }
+            if (best < 0) { FindStage(); return; }
+            right = Vector3.Cross(Vector3.up, fwd);
+            Debug.Log($"Demo: spawn stage at {origin}, score {best:0.0}");
         }
 
         Vector3 Floor(Vector3 p)
