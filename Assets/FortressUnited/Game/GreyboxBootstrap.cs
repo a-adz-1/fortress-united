@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace FortressUnited.Game
@@ -14,6 +15,8 @@ namespace FortressUnited.Game
         public int Team = 1;
         [Tooltip("Class max speed for the player.")]
         public float MaxSpeed = 400;
+        [Tooltip("Medikit view models by team (found by name in the editor if left empty).")]
+        public GameObject MedkitBlue, MedkitRed;
 
         void Start()
         {
@@ -46,6 +49,34 @@ namespace FortressUnited.Game
             foreach (var cam in FindObjectsByType<Camera>(FindObjectsSortMode.None))
                 if (cam.GetComponentInParent<PlayerController>() == null)
                     cam.gameObject.SetActive(false);
+
+            StartCoroutine(SetUpVitals(player));
+        }
+
+        IEnumerator SetUpVitals(PlayerController player)
+        {
+            yield return null; // the player makes its camera in Start
+
+            var vitals = new PlayerVitals();
+            var display = new GameObject("Vitals Display").AddComponent<VitalsDisplay>();
+            display.Vitals = vitals;
+
+            var driver = player.gameObject.AddComponent<VitalsTestDriver>();
+            driver.Player = player;
+            driver.Vitals = vitals;
+
+#if UNITY_EDITOR
+            if (MedkitBlue == null)
+                MedkitBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/FortressUnited/Art/Medkit/Medkit_Blue.fbx");
+            if (MedkitRed == null)
+                MedkitRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/FortressUnited/Art/Medkit/Medkit_Red.fbx");
+#endif
+            var prefab = Team == 2 ? MedkitRed : MedkitBlue;
+            var cam = player.GetComponentInChildren<Camera>();
+            if (prefab != null && cam != null)
+                driver.Medkit = MedkitViewModel.Create(prefab, cam, player, display).gameObject;
+            else
+                Debug.LogWarning("Fortress United: no medikit model, vitals run without a view model");
         }
     }
 }

@@ -33,6 +33,8 @@ namespace FortressUnited.Game
 
         public BspWorld World;
         public MoveState State { get; private set; }
+        /// <summary>Extra view angles on top of the punch angle (concussion wobble).</summary>
+        public Vec3 ViewOffset;
 
         readonly PlayerMovement movement = new PlayerMovement();
         readonly MoveVars vars = new MoveVars();
@@ -128,7 +130,7 @@ namespace FortressUnited.Game
             float alpha = (float)(accumulator / (msec / 1000.0));
             Vec3 eye = previousEye + (currentEye - previousEye) * alpha;
             cam.transform.position = GoldSrcSpace.ToUnity(eye);
-            Vec3 view = new Vec3(viewAngles.X + State.PunchAngle.X, viewAngles.Y + State.PunchAngle.Y, State.Angles.Z);
+            Vec3 view = new Vec3(viewAngles.X + State.PunchAngle.X + ViewOffset.X, viewAngles.Y + State.PunchAngle.Y + ViewOffset.Y, State.Angles.Z + ViewOffset.Z);
             cam.transform.rotation = GoldSrcSpace.AnglesToUnity(view);
             cam.fieldOfView = Camera.HorizontalToVerticalFieldOfView(FieldOfView, cam.aspect);
         }

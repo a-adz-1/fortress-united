@@ -3,7 +3,8 @@
     "rootNamespace": "FortressUnited.Game",
     "references": [
         "FortressUnited.Core",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

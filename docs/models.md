@@ -37,8 +37,9 @@ world version for other players to see (`p_` models), listed below.
 
 - [ ] Crowbar / axe, all classes (`v_tfc_crowbar`)
 - [ ] Spanner, engineer (`v_tfc_spanner`): concept done (plasma spanner)
-- [~] Medikit, medic (`v_tfc_medkit`): blue and red models received; being
-  made game-ready (decimation, live vitals screen)
+- [~] Medikit, medic (`v_tfc_medkit`): blue and red models in
+  `Art/Medkit` (30k triangles, 2K textures) with a live vitals screen in the
+  greybox; waiting on a first in-editor look
 - [ ] Knife, spy (`v_tfc_knife`)
 - [ ] Shotgun (`v_tfc_shotgun`)
 - [ ] Super shotgun (`v_tfc_12gauge`)

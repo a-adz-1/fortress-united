@@ -22,5 +22,6 @@
     <ProjectReference Include="../Core/FortressUnited.Core.csproj" />
     <Reference Include="$(UnityManaged)/UnityEngine/*.dll" Private="false" />
     <Reference Include="../../Library/ScriptAssemblies/Unity.InputSystem.dll" Private="false" />
+    <Reference Include="../../Library/ScriptAssemblies/UnityEngine.UI.dll" Private="false" />
   </ItemGroup>
 </Project>
