@@ -65,6 +65,8 @@ namespace FortressUnited.Game
             glowLight.color = Color;
             glowLight.range = LightRange;
             glowLight.shadows = LightShadows.None;
+            // Don't light the player's own arms and weapon a few centimetres away
+            glowLight.cullingMask = ~(1 << ViewModelCamera.Layer);
         }
 
         LineRenderer Line(string name, int order, Material material)
@@ -103,7 +105,10 @@ namespace FortressUnited.Game
                 Redraw();
             }
 
-            glowLight.intensity = LightIntensity * (0.7f + Random.value * 0.5f) * (1 + surge * 2.5f);
+            // The light is right next to the hand holding it: soft at idle, and for
+            // weapons with no idle arc (the prod) only while a zap is showing
+            float idle = Bolts > 0 ? 0.35f : 0f;
+            glowLight.intensity = LightIntensity * (0.7f + Random.value * 0.5f) * (idle + surge * 1.2f);
             glowLight.transform.position = Centre();
         }
 

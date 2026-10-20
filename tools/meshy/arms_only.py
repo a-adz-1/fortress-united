@@ -90,11 +90,19 @@ def curl_hand(side):
     for i, p in zip(idx, out):
         me.vertices[i].co = inv @ mathutils.Vector(p)
     print(f"{side} hand curled ({len(idx)} vertices)")
+    # Where a handle goes: the middle of the curled fingers, running across the
+    # hand towards the thumb (forward, -Y, in the A-pose)
+    centre = out[t > 0.45 * L].mean(0)
+    axis = across if across[1] < 0 else -across
+    return centre, axis
 
 
+grips = {}
 if FIST:
     for side in ("Left", "Right"):
-        curl_hand(side)
+        r = curl_hand(side)
+        if r is not None:
+            grips[side] = r
 
 bm = bmesh.new()
 bm.from_mesh(body.data)
@@ -107,11 +115,31 @@ body.data.calc_loop_triangles()
 print(f"kept {sum(keep)} of {len(keep)} vertices, {len(body.data.loop_triangles)} triangles")
 body.name = body.name + "_Arms"
 
+# Grip markers: a child of each hand bone at the fist's centre, +Z along the handle
+markers = []
+for side, (centre, axis) in grips.items():
+    e = bpy.data.objects.new(side + "Grip", None)
+    bpy.context.scene.collection.objects.link(e)
+    e.parent = arm
+    e.parent_type = "BONE"
+    e.parent_bone = side + "Hand"
+    bpy.context.view_layer.update()
+    z = mathutils.Vector(axis).normalized()
+    y = mathutils.Vector((0, 0, 1)).cross(z).normalized() if abs(z.z) < 0.9 else mathutils.Vector((1, 0, 0))
+    x = y.cross(z)
+    m = mathutils.Matrix((x, y, z)).transposed().to_4x4()
+    m.translation = mathutils.Vector(centre)
+    e.matrix_world = m
+    markers.append(e)
+    print(f"{side}Grip at {tuple(round(v, 3) for v in centre)} axis {tuple(round(v, 2) for v in axis)}")
+
 bpy.ops.object.select_all(action="DESELECT")
 arm.select_set(True)
 body.select_set(True)
+for e in markers:
+    e.select_set(True)
 bpy.ops.export_scene.fbx(
-    filepath=dst, use_selection=True, object_types={"ARMATURE", "MESH"},
+    filepath=dst, use_selection=True, object_types={"ARMATURE", "MESH", "EMPTY"},
     apply_scale_options="FBX_SCALE_ALL", axis_forward="-Z", axis_up="Y",
     mesh_smooth_type="OFF", path_mode="STRIP", embed_textures=False,
     add_leaf_bones=False, armature_nodetype="NULL", bake_anim=False)

@@ -15,7 +15,7 @@ namespace FortressUnited.Game
     public sealed class SpannerViewModel : MonoBehaviour
     {
         [Tooltip("Where the grip sits, in camera space (metres).")]
-        public Vector3 GripOffset = new Vector3(0.16f, -0.2f, 0.34f);
+        public Vector3 GripOffset = new Vector3(0.17f, -0.12f, 0.36f);
         [Tooltip("Pitch, yaw, roll of the spanner relative to the view.")]
         public Vector3 HoldAngles = new Vector3(-35, -85, 0);
         public float Scale = 1;
@@ -63,7 +63,7 @@ namespace FortressUnited.Game
             var vm = CreateProd(prefab, cam, player, team, teamSkin);
             vm.name = "Killswitch (view model)";
             vm.pivot.localScale = Vector3.one * 1.25f;
-            vm.GripOffset = new Vector3(0.17f, -0.17f, 0.28f);
+            vm.GripOffset = new Vector3(0.16f, -0.1f, 0.32f);
             vm.HoldAngles = new Vector3(-40, -22, -30);
             vm.pivot.localPosition = vm.GripOffset;
             vm.pivot.localRotation = Quaternion.Euler(vm.HoldAngles);
