@@ -13,7 +13,8 @@ namespace FortressUnited.Game
     ///   8 dummies do the repair kit push
     ///   0 build a sentry ahead; again next to it (or hit it with the
     ///     spanner) to upgrade (levels 1-3), then the spanner repairs it
-    ///   X detonate your sentry   G throw a test grenade
+    ///   X detonate your sentry
+    ///   G prime a frag grenade, G again to throw it (hold it to grenade jump)
     ///   F prime a conc grenade, F again to throw it; hold it and it goes
     ///     off in your hand (TFC's hand-conc: bunny hop, prime, launch)
     ///   9 stand a target dummy ahead (it copies your conc/fire/virus state);
@@ -43,6 +44,9 @@ namespace FortressUnited.Game
         [Tooltip("Conc grenade model (glow tinted per team).")]
         public GameObject ConcModel;
         ConcGrenade heldConc;
+        FragGrenade heldFrag;
+        [Tooltip("Frag grenade model (glow tinted per team).")]
+        public GameObject FragModel;
         Transform hand;
         [Tooltip("Medics shake off concussion in 7 seconds instead of 15.")]
         public bool Medic = true;
@@ -100,11 +104,7 @@ namespace FortressUnited.Game
                 if (kb.fKey.wasPressedThisFrame)
                     ConcKey();
                 if (kb.gKey.wasPressedThisFrame)
-                {
-                    var cam = Player.GetComponentInChildren<Camera>();
-                    if (cam != null)
-                        TestGrenade.Throw(cam.transform.position + cam.transform.forward * 0.5f, cam.transform.forward * 12 + Vector3.up * 3, HitSomething);
-                }
+                    FragKey();
                 if (kb.digit8Key.wasPressedThisFrame)
                 {
                     enemies.RemoveAll(e => e == null);
@@ -213,18 +213,70 @@ namespace FortressUnited.Game
                 heldConc = null;
                 return;
             }
+            heldConc = HandGrenade.Prime<ConcGrenade>(ConcModel, Hand(cam), TeamColour, (at, inHand) => ConcBlast(at));
+        }
+
+        void FragKey()
+        {
+            var cam = Player.GetComponentInChildren<Camera>();
+            if (cam == null)
+                return;
+            if (heldFrag != null)
+            {
+                heldFrag.Throw(cam.transform.forward, cam.transform.up);
+                heldFrag = null;
+                return;
+            }
+            heldFrag = HandGrenade.Prime<FragGrenade>(FragModel, Hand(cam), TeamColour, FragBlast);
+        }
+
+        Transform Hand(Camera cam)
+        {
             if (hand == null)
             {
                 hand = new GameObject("Grenade Hand").transform;
                 hand.SetParent(cam.transform, false);
                 hand.localPosition = new Vector3(0.22f, -0.22f, 0.35f);
             }
-            heldConc = ConcGrenade.Prime(ConcModel, hand, TeamColour, ConcBlast);
+            return hand;
+        }
+
+        /// <summary>A frag went off: TFC damage and knockback on you, damage on everything it can see.</summary>
+        void FragBlast(Vector3 at, bool inHand)
+        {
+            heldFrag = null;
+            var s = Player.State;
+            Vec3 blast = GoldSrcSpace.FromUnity(at);
+            // You: RadiusDamage traces to your body centre; a grenade in your hand always reaches you
+            Vector3 body = GoldSrcSpace.ToUnity(s.Origin);
+            bool seen = inHand || !Physics.Linecast(at, body, out var block) || block.distance > Vector3.Distance(at, body) - 0.3f;
+            float dist = (s.Origin - blast).Length();
+            float dmg = seen ? FragGrenade.DamageAt(inHand ? 0 : dist, self: true) : 0;
+            if (dmg > 0)
+            {
+                Damage(dmg);
+                s.Velocity = s.Velocity + FragGrenade.Knockback(s.Origin, blast, dmg);
+                s.OnGround = -1;
+            }
+            // Everything else in reach
+            foreach (var col in Physics.OverlapSphere(at, FragGrenade.Reach * HandGrenade.Unit))
+            {
+                Vector3 p = col.ClosestPoint(at);
+                if (Physics.Linecast(at, p, out var hit) && hit.collider != col && !hit.transform.IsChildOf(col.transform.root))
+                    continue;
+                float d = FragGrenade.DamageAt(Vector3.Distance(p, at) / HandGrenade.Unit, self: false);
+                if (d <= 0)
+                    continue;
+                HitSomething(col.transform, p, d);
+                if (col.attachedRigidbody != null && !col.attachedRigidbody.isKinematic)
+                    col.attachedRigidbody.AddExplosionForce(d * 0.08f, at, FragGrenade.Reach * HandGrenade.Unit, 0.4f, ForceMode.VelocityChange);
+            }
         }
 
         /// <summary>A conc went off: TFC's push on the player, glitches and shoves for everything else.</summary>
         void ConcBlast(Vector3 at)
         {
+            heldConc = null;
             var s = Player.State;
             Vec3 gren = GoldSrcSpace.FromUnity(at);
             var push = ConcGrenade.Blast(s.Origin, s.Velocity, gren);
@@ -365,8 +417,11 @@ namespace FortressUnited.Game
             if (heldConc != null)
                 GUI.Label(new Rect(Screen.width / 2 - 60, Screen.height / 2 + 40, 200, 24),
                     $"CONC  {Mathf.Max(0, heldConc.GoesOffAt - Time.time):0.0}");
+            if (heldFrag != null)
+                GUI.Label(new Rect(Screen.width / 2 - 60, Screen.height / 2 + 60, 200, 24),
+                    $"FRAG  {Mathf.Max(0, heldFrag.GoesOffAt - Time.time):0.0}");
             GUI.Label(new Rect(10, Screen.height - 30, 900, 24),
-                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn  7 drop body  8 dummies heal  9 dummy  0 sentry  X det  G grenade  F conc  RMB shoot   Q/wheel switch  H hide  click swing");
+                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn  7 drop body  8 dummies heal  9 dummy  0 sentry  X det  G frag  F conc  RMB shoot   Q/wheel switch  H hide  click swing");
         }
     }
 }

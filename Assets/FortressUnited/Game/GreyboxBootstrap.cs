@@ -22,7 +22,7 @@ namespace FortressUnited.Game
         [Tooltip("Class models by team, for dummies and bodies (found by name in the editor if left empty).")]
         public GameObject MedicBlue, MedicRed;
         [Tooltip("Conc grenade model (found by name in the editor if left empty).")]
-        public GameObject ConcGrenadeModel;
+        public GameObject ConcGrenadeModel, FragGrenadeModel;
         [Tooltip("Sentry levels 1-3 (found by name in the editor if left empty).")]
         public GameObject[] Sentries = new GameObject[3];
         public Texture2D[] SentryBlueSkins = new Texture2D[3], SentryRedSkins = new Texture2D[3];
@@ -84,6 +84,7 @@ namespace FortressUnited.Game
             if (SpannerRed == null) SpannerRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Spanner/Spanner_Red.fbx");
             if (MedicBlue == null) MedicBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Blue.fbx");
             if (MedicRed == null) MedicRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Red.fbx");
+            if (FragGrenadeModel == null) FragGrenadeModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Grenades/FragGrenade.fbx");
             if (ConcGrenadeModel == null) ConcGrenadeModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Grenades/ConcGrenade.fbx");
             for (int i = 0; i < 3; i++)
             {
@@ -106,6 +107,7 @@ namespace FortressUnited.Game
             driver.TeamColour = TeamColours.For(red);
             driver.SentryModels = Sentries;
             driver.ConcModel = ConcGrenadeModel;
+            driver.FragModel = FragGrenadeModel;
             driver.SentryTeamTextures = red ? SentryRedSkins : SentryBlueSkins;
             var cam = player.GetComponentInChildren<Camera>();
             if (cam != null)

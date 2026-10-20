@@ -96,7 +96,8 @@ Simplified versions of the first-person weapons (`p_` models).
 
 ## Grenades and projectiles
 
-- [ ] Hand grenade (`w_grenade` / `grenade`)
+- [x] Hand grenade (`w_grenade` / `grenade`): the frag, `Art/Grenades`, glow mask
+  tinted per team; TFC's damage, falloff and knockback in the greybox (G)
 - [x] Concussion grenade (`conc_grenade`): `Art/Grenades`, one model with a
   glow mask tinted per team; TFC's conc push and hand-conc in the greybox (F)
 - [ ] Nail grenade (`ngrenade`)

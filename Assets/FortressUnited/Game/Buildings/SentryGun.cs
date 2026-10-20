@@ -531,21 +531,22 @@ namespace FortressUnited.Game
     public sealed class SentryExplosion : MonoBehaviour
     {
         Light glow;
-        float groundY;
+        float groundY, scale = 1;
         LineRenderer ring;
         float age;
         ParticleSystem smoke;
 
-        public void Play(Color team, float ground)
+        public void Play(Color team, float ground, float size = 1)
         {
             groundY = ground;
+            scale = size;
             glow = gameObject.AddComponent<Light>();
             glow.type = LightType.Point;
-            glow.range = 9;
+            glow.range = 9 * size;
             glow.shadows = LightShadows.None;
 
-            FxParticles.Sparks(transform, new Color(1f, 0.75f, 0.35f)).Emit(140);
-            FxParticles.Sparks(transform, Color.Lerp(team, Color.white, 0.4f)).Emit(60);
+            FxParticles.Sparks(transform, new Color(1f, 0.75f, 0.35f)).Emit(Mathf.RoundToInt(140 * size));
+            FxParticles.Sparks(transform, Color.Lerp(team, Color.white, 0.4f)).Emit(Mathf.RoundToInt(60 * size));
 
             // Dark smoke rising
             smoke = FxParticles.Steam(transform);
@@ -554,7 +555,7 @@ namespace FortressUnited.Game
             main.startSize = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
             main.startSpeed = new ParticleSystem.MinMaxCurve(1f, 2.5f);
             main.startLifetime = new ParticleSystem.MinMaxCurve(1.5f, 3f);
-            smoke.Emit(40);
+            smoke.Emit(Mathf.RoundToInt(40 * size));
 
             // Shock ring on the ground
             ring = gameObject.AddComponent<LineRenderer>();
@@ -573,10 +574,10 @@ namespace FortressUnited.Game
             // White flash, then orange, then out
             float t = age / 0.6f;
             glow.color = Color.Lerp(Color.white, new Color(1f, 0.45f, 0.1f), Mathf.Clamp01(t * 2));
-            glow.intensity = Mathf.Max(0, 12 * (1 - t));
+            glow.intensity = Mathf.Max(0, 12 * scale * (1 - t));
             if (ring != null)
             {
-                float r = Mathf.Lerp(0.2f, 4f, Mathf.Sqrt(Mathf.Clamp01(age / 0.5f)));
+                float r = Mathf.Lerp(0.2f, 4f * scale, Mathf.Sqrt(Mathf.Clamp01(age / 0.5f)));
                 for (int i = 0; i < ring.positionCount; i++)
                 {
                     float a = i * Mathf.PI * 2 / ring.positionCount;
