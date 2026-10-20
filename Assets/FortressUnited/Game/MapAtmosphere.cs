@@ -4,7 +4,8 @@ using UnityEngine.Rendering;
 namespace FortressUnited.Game
 {
     /// <summary>
-    /// The maps' mood: a low dusk sun, a tinted sky, cool ambient light, fog,
+    /// The maps' mood: a low dusk sun (at the map's own angle), a tinted sky,
+    /// dim ambient light with rooms lit by their own fixtures (MapLights), fog,
     /// and reflections captured from the map itself (a cubemap rendered from
     /// its middle), so glossy panels and water reflect the map and sky.
     /// Per-map themes (night, snow, desert) come later.
@@ -16,7 +17,7 @@ namespace FortressUnited.Game
             var sun = new GameObject("Sun").AddComponent<Light>();
             sun.type = LightType.Directional;
             sun.color = new Color(1f, 0.84f, 0.7f);
-            sun.intensity = 1.5f;
+            sun.intensity = 2.1f;
             sun.shadows = LightShadows.Soft;
             sun.transform.rotation = Quaternion.Euler(32, -40, 0);
 
@@ -30,18 +31,22 @@ namespace FortressUnited.Game
             RenderSettings.sun = sun;
 
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.5f, 0.56f, 0.72f);
-            RenderSettings.ambientEquatorColor = new Color(0.4f, 0.38f, 0.44f);
-            RenderSettings.ambientGroundColor = new Color(0.16f, 0.16f, 0.19f);
+            // Low ambient: rooms are lit by their own fixtures (MapLights), so interiors have mood
+            RenderSettings.ambientSkyColor = new Color(0.36f, 0.4f, 0.54f);
+            RenderSettings.ambientEquatorColor = new Color(0.21f, 0.2f, 0.25f);
+            RenderSettings.ambientGroundColor = new Color(0.06f, 0.06f, 0.08f);
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;
-            RenderSettings.fogDensity = 0.0045f;
+            RenderSettings.fogDensity = 0.006f;
             RenderSettings.fogColor = new Color(0.45f, 0.47f, 0.58f);
             DynamicGI.UpdateEnvironment();
 
             if (map != null)
+            {
+                MapLights.Build(map, sun);
                 CaptureReflections(map.transform);
+            }
             return sun;
         }
 

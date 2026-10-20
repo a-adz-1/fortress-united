@@ -16,7 +16,7 @@ Shader "FortressUnited/SciFiSurface"
         _AccentColor ("Accent paint", Color) = (0.16, 0.17, 0.19, 1)
         _Accent ("Team paint (0 none, 1 team bands)", Range(0, 1)) = 0
         [HDR] _GlowColor ("Glow", Color) = (1.4, 2.2, 3.0, 1)
-        _GlowAmount ("Glow line strength", Range(0, 3)) = 0.5
+        _GlowAmount ("Glow line strength", Range(0, 3)) = 0.25
         _LightStrips ("Share of ceiling panels lit", Range(0, 1)) = 0.22
         _WallPanel ("Wall panel size (m)", Vector) = (2.4, 1.2, 0, 0)
         _FloorPanel ("Floor panel size (m)", Vector) = (1.6, 1.6, 0, 0)
@@ -53,6 +53,28 @@ Shader "FortressUnited/SciFiSurface"
                 half _Accent, _GlowAmount, _LightStrips, _Tone, _Metal;
                 float4 _WallPanel, _FloorPanel;
             CBUFFER_END
+
+            // Team bases (MapLights): centre xyz, w = 1 if the team has one; their paint and glow
+            float4 _TeamCentres[4];
+            float4 _TeamPaint[4];
+            float4 _TeamGlow[4];
+
+            // Which team's base this point is in, and how surely (0 in the middle ground)
+            void TeamAt(float3 p, out int team, out float weight)
+            {
+                team = -1; weight = 0;
+                float d1 = 1e9, d2 = 1e9; int best = -1;
+                for (int t = 0; t < 4; t++)
+                {
+                    if (_TeamCentres[t].w < 0.5) continue;
+                    float d = distance(p, _TeamCentres[t].xyz);
+                    if (d < d1) { d2 = d1; d1 = d; best = t; }
+                    else if (d < d2) d2 = d;
+                }
+                if (best < 0 || d2 > 1e8) return;
+                team = best;
+                weight = saturate(((d2 - d1) / max(d1 + d2, 1) - 0.1) * 5);
+            }
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
             struct Varyings
@@ -122,9 +144,18 @@ Shader "FortressUnited/SciFiSurface"
                 half smooth = kind == 1 ? 0.55 : 0.62;
                 half metal = kind == 1 ? 0.2 : 0.0;
                 if (_Metal > 0.5) { albedo = half3(0.3, 0.31, 0.33); smooth = 0.58; metal = 0.45; }
-                // Team bands: every third row of wall panels is painted, the same height all over the map
-                float row = fmod(fmod(cell.y, 3) + 3, 3);
-                if (kind == 0 && _Accent > 0.5 && row < 0.5) { albedo = _AccentColor.rgb; smooth = 0.5; }
+                // Team bands: every third row of wall panels is painted, the same height all over the map:
+                // in a team's base its colour (team textures always), elsewhere none
+                int team; float teamW;
+                TeamAt(i.positionWS, team, teamW);
+                half3 bandColour = _Accent > 0.5 ? _AccentColor.rgb : (team >= 0 ? _TeamPaint[team].rgb * 0.9 : albedo);
+                half bandW = _Accent > 0.5 ? 1 : teamW;
+                half3 seamGlow = _Accent > 0.5 ? _GlowColor.rgb : lerp(_GlowColor.rgb, team >= 0 ? _TeamGlow[team].rgb : _GlowColor.rgb, teamW);
+                half seamStrength = _Accent > 0.5 ? _GlowAmount : lerp(_GlowAmount, 2.5, teamW);
+                // Team textures band every third row; base walls every fifth, so tall facades aren't striped
+                float period = _Accent > 0.5 ? 3 : 5;
+                float row = fmod(fmod(cell.y, period) + period, period);
+                if (kind == 0 && row < 0.5 && bandW > 0.01) { albedo = lerp(albedo, bandColour, bandW); smooth = 0.5; }
                 else if (kind == 0 && h3 < 0.12) albedo *= 0.86;      // the odd panel a shade darker
                 // Slight per-panel shade and soft wear
                 albedo *= (0.97 + 0.05 * h5) * (0.97 + 0.04 * noise(p * 1.7));
@@ -167,8 +198,21 @@ Shader "FortressUnited/SciFiSurface"
                 {
                     float fy = frac(q.y);
                     float toSeam = row < 0.5 ? (1 - fy) * size.y : (row < 1.5 ? fy * size.y : 1);
-                    float seamLine = 1 - smoothstep(0.003, 0.008, toSeam);
-                    glow += _GlowColor.rgb * seamLine * _GlowAmount * fade;
+                    float lw = max(0.004, fwidth(q.y) * size.y * 0.8);      // at least most of a pixel, so it never breaks into dashes
+                    float seamLine = 1 - smoothstep(lw, lw * 2, toSeam);
+                    glow += seamGlow * seamLine * seamStrength * fade;
+                }
+                // Indicator lights: a little row of coloured dots near the corner of some wall panels
+                if (kind == 0 && h5 < 0.07 && cs.x > 0.5)
+                {
+                    float2 corner = c - float2(cs.x * 0.5 - 0.09, -cs.y * 0.5 + 0.08);
+                    float k = floor(corner.x / -0.035);
+                    float2 dotP = float2(corner.x + (k + 0.5) * 0.035, corner.y);
+                    float dot_ = (1 - smoothstep(0.006, 0.009, length(dotP))) * step(0, k) * step(k, 2.5);
+                    float pick = hash(id + k * 1.7);
+                    half3 dc = pick < 0.4 ? half3(3.0, 0.9, 0.15) : (pick < 0.7 ? half3(0.3, 3.0, 0.6) : half3(3.0, 0.25, 0.2));
+                    float blink = step(0.25, frac(_Time.y * (0.3 + pick) + pick * 7));
+                    glow += dc * dot_ * blink;
                 }
                 float3 nOS = normalize(n + (tu * bump.x + tv * bump.y));
                 float3 normalWS = normalize(TransformObjectToWorldNormal(nOS));

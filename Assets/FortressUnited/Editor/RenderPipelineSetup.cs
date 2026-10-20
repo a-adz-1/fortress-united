@@ -59,6 +59,16 @@ namespace FortressUnited.EditorTools
             Debug.Log("Fortress United: ambient occlusion added to the renderer");
         }
 
+        /// <summary>Forward+: maps have hundreds of lights (one per fixture), more than plain forward's eight per object.</summary>
+        static void UseForwardPlus(UniversalRendererData data)
+        {
+            if (data == null || data.renderingMode == RenderingMode.ForwardPlus)
+                return;
+            data.renderingMode = RenderingMode.ForwardPlus;
+            EditorUtility.SetDirty(data);
+            Debug.Log("Fortress United: renderer set to Forward+");
+        }
+
         const string Folder = "Assets/FortressUnited/Settings";
         const string AssetPath = Folder + "/FortressUnited_URP.asset";
         const string RendererPath = Folder + "/FortressUnited_Renderer.asset";
@@ -82,6 +92,7 @@ namespace FortressUnited.EditorTools
 
             AddDecals(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));
             AddAmbientOcclusion(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));
+            UseForwardPlus(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));
 
             GraphicsSettings.defaultRenderPipeline = asset;
             int current = QualitySettings.GetQualityLevel();

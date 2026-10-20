@@ -27,6 +27,8 @@ namespace FortressUnited.Game
         public bool UseWorldMaterials = true;
 
         public BspFile Bsp { get; private set; }
+        /// <summary>A map texture's pixels (from the map or its WADs), or null.</summary>
+        public MipTexture TextureData(int tex) => textures?.Get(tex);
         public BspWorld World { get; private set; }
 
         /// <summary>PlayerPrefs key for the last map opened from the editor menu.</summary>

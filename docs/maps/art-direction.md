@@ -11,14 +11,17 @@ dark undersuit, team-colour glow), and the maps match it.
   strips, glowing seam lines; team textures get team bands with glowing seams.
 - Natural surfaces (rock, ground): CC0 PBR materials, tinted to the map's colours.
 - Water: animated ripples, reflections, sun glints; lava glows.
-- Dusk sun and sky, fog, map reflections, ambient occlusion (`Game/MapAtmosphere.cs`).
+- Dusk sun (at the map's own angle) and sky, fog, map reflections, ambient
+  occlusion (`Game/MapAtmosphere.cs`).
+- Real lights (`Game/MapLights.cs`): a point light at each light fixture (light
+  textures, merged on a 2 m grid) in its colour, and at glow sprites and light
+  entities; dim ambient, so rooms are lit by their fixtures.
+- Team bases: found from each team's spawn points; walls there get team bands
+  with glowing team lines, and white lights lean to the team's colour.
+- Indicator lights: small blinking coloured dots on some panels.
 
 ## Ideas to add (references: Creepy Cat's 3D Scifi Kit on the Asset Store)
 
-- **Moody interiors:** darker, warmer rooms lit by many small coloured lights
-  (orange, red, green indicator dots) instead of flat ambient.
-- **Real lights from the map's light textures:** a Unity point or area light
-  at each light fixture face, in its colour, so rooms are lit by their fixtures.
 - **Light strips** along floor edges, door frames and ceiling ribs (yellow,
   cyan, team colour).
 - **Wall screens** with live UI (scores, flag status, class counts), using the
@@ -26,8 +29,6 @@ dark undersuit, team-colour glow), and the maps match it.
 - **Structural detail:** curved ribs or arches along corridors, railings on
   walkways and ledges, pipes and cable runs, door frames, kick plates.
 - **Signs as holograms:** the old signs redrawn as clean projected panels.
-- **Team areas:** each base washed in its team's colour (lights, bands, glow),
-  so you always know whose side you're on.
 - **Per-map themes:** dusk (default), night (more glow), snow, desert, space.
 - **Baked lighting and probes** per map for soft bounce light and reflections.
 

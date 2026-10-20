@@ -529,7 +529,25 @@ namespace FortressUnited.Game
             var picks = spots.FindAll(s => s.water).GetRange(0, Mathf.Min(1, spots.FindAll(s => s.water).Count));
             foreach (var s in spots)
                 if (!s.water && picks.Count < 5) picks.Add(s);
-            // Wide views first: across the open area both ways, and from high up
+            // Inside each base: from a spawn point, looking where players face, then back
+            var mapWorld = GetComponent<MapLoader>().World;
+            foreach (int team in new[] { 1, 2 })
+            {
+                var spawns = mapWorld.SpawnPoints(team);
+                if (spawns.Count == 0) continue;
+                var sp = spawns[spawns.Count / 2];
+                Vector3 eye = GoldSrcSpace.ToUnity(sp.Origin) + Vector3.up * 0.7f;
+                float yaw = sp.Yaw * Mathf.Deg2Rad;
+                Vector3 look = GoldSrcSpace.DirectionToUnity(new FortressUnited.Core.Movement.Vec3(Mathf.Cos(yaw), Mathf.Sin(yaw), 0));
+                foreach (var dir in new[] { look, -look })
+                {
+                    Vector3 e = eye, d = dir;
+                    shot = time => (e + d * time * 0.3f, e + d * 10 + Vector3.down * 0.5f);
+                    shotStart = Time.time;
+                    yield return new WaitForSeconds(2.5f);
+                }
+            }
+            // Wide views: across the open area both ways, and from high up
             Vector3 o = origin + Vector3.up * 1.7f;
             foreach (var (from, to) in new[] {
                 (o - fwd * 6, o + fwd * 20), (o + fwd * 6, o - fwd * 20),
