@@ -32,6 +32,8 @@ namespace FortressUnited.Tools
             }
             if (args.Length >= 2 && args[0] == "walk")
                 return Walk(args[1], args.Length >= 3 && args[2] == "-v");
+            if (args.Length >= 3 && args[0] == "textures")
+                return Textures(args[1], args.Skip(2).ToArray());
             if (args.Length >= 1 && args[0] == "check")
                 return Check(args.Length >= 2 ? args[1] : null);
             Console.Error.WriteLine("usage: MapTools inventory <maps dir> <out dir> [--stock name,name,...]");
@@ -391,6 +393,29 @@ namespace FortressUnited.Tools
             }
             Console.WriteLine(failed == 0 ? $"all {files.Length} maps ok" : $"{failed} of {files.Length} maps failed");
             return failed == 0 ? 0 : 1;
+        }
+
+        /// <summary>How many of a map's textures can be found (embedded or in the given WAD folders).</summary>
+        static int Textures(string mapPath, string[] wadDirs)
+        {
+            var bsp = BspFile.Load(mapPath);
+            var source = new TextureSource(bsp, wadDirs);
+            int found = 0, embedded = 0, missing = 0, mismatch = 0;
+            for (int i = 0; i < bsp.Textures.Length; i++)
+            {
+                var t = bsp.Textures[i];
+                var tex = source.Get(i);
+                if (tex == null) { missing++; Console.WriteLine($"  missing: {t.Name}"); continue; }
+                found++;
+                if (t.Embedded) embedded++;
+                if (tex.Width != t.Width || tex.Height != t.Height)
+                {
+                    mismatch++;
+                    Console.WriteLine($"  size mismatch: {t.Name} {tex.Width}x{tex.Height} vs {t.Width}x{t.Height}");
+                }
+            }
+            Console.WriteLine($"{Path.GetFileNameWithoutExtension(mapPath)}: {bsp.Textures.Length} textures, {found} found ({embedded} embedded), {missing} missing, {mismatch} wrong size");
+            return missing == 0 && mismatch == 0 ? 0 : 1;
         }
 
         static string Csv(string s) => s.Contains(',') || s.Contains('"') ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;

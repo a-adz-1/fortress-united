@@ -18,7 +18,7 @@ community map tools and server features built in.
 | `Packages/manifest.json` | Unity packages: URP, Input System, UI. |
 | `docs/` | Design, roadmap, Unity setup guide, map texture inventory. |
 | `tools/TrenchBroom/` | TrenchBroom game config and entity definitions for mappers. |
-| `tests/` | `Core/` (builds Core as .NET Standard 2.1 like Unity), `MovementTests/`, `MapTools/` (texture inventory, map reader checks). |
+| `tests/` | `Core/` (builds Core as .NET Standard 2.1 like Unity), `MovementTests/`, `MapTools/` (texture inventory, map reader checks, `walk` collision test), `UnityCompile/` (compiles the Unity scripts against the installed editor's assemblies). |
 
 ## Opening the project
 
@@ -30,6 +30,17 @@ community map tools and server features built in.
    updated `Packages/` files afterwards.
 4. Before adding art, install Git LFS (`git lfs install`) and add LFS rules
    for textures, models and audio, so the repository stays small.
+
+## Playing a map in the greybox
+
+1. In Unity: **Fortress United > Open Map...** and pick a `.bsp` (e.g. from a
+   TFC server's `tfc/maps` folder). Textures are read from the map and from
+   `.wad` files in its game folder and the sibling `valve` folder; nothing is
+   copied into the project.
+2. It opens `Scenes/Greybox` and starts play mode. **Play Last Map** reruns it.
+3. Controls: WASD, mouse, Space jump, Ctrl crouch, Shift walk, V noclip, Esc
+   frees the mouse, F1 toggles the speed readout. Pick team and class speed on
+   the Greybox object's `GreyboxBootstrap`.
 
 ## Tests
 
@@ -55,4 +66,8 @@ tfc-decomp, and run the tests.
   (311 textures cover 90% of drawn surfaces).
 - TrenchBroom game config with TFC-accurate entity definitions:
   `tools/TrenchBroom/`.
+- Greybox: **Fortress United > Open Map...** in the Unity menu loads any
+  GoldSrc/TFC `.bsp` with its textures (from the map or its WADs) and drops
+  you in at a team spawn, moving exactly like TFC on the map's own
+  collision hulls (all 89 maps here pass a spawn/run/hop test).
 - Next: see `docs/roadmap.md`.

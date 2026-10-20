@@ -5,7 +5,7 @@
    that runs the same inputs through the faithful TFC build and through ours
    and compares positions and velocities tick by tick. Needs the .NET SDK
    for the tests.
-2. **Greybox and a character controller.** A Unity scene with one map
+2. **Greybox and a character controller (first version done: real maps with textures, TFC movement on the maps' collision hulls, keyboard/mouse).** A Unity scene with one map
    imported as boxes, a first-person controller driving the movement core,
    Input System bindings.
 3. **Map pipeline (started: BSP/.map readers, texture inventory, TrenchBroom config done; next the Unity importer and material mapping table).** TrenchBroom config + FGD for the goal entities; `.map`

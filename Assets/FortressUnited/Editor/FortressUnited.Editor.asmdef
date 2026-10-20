@@ -1,0 +1,19 @@
+{
+    "name": "FortressUnited.Editor",
+    "rootNamespace": "FortressUnited.EditorTools",
+    "references": [
+        "FortressUnited.Core",
+        "FortressUnited.Game"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

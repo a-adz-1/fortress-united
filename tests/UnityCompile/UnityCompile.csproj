@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compiles the Unity-side scripts (Game, Editor) against the installed
+       Unity editor's assemblies, so errors show up without opening Unity.
+       Needs Unity 6000.3 in ~/Unity/Hub/Editor and the project opened once
+       (for Library/ScriptAssemblies/Unity.InputSystem.dll).
+       Run: dotnet build tests/UnityCompile -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <UnityVersion Condition="'$(UnityVersion)' == ''">6000.3.26f1</UnityVersion>
+    <UnityManaged>$(HOME)/Unity/Hub/Editor/$(UnityVersion)/Editor/Data/Managed</UnityManaged>
+    <NoWarn>CS0618</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/FortressUnited/Game/**/*.cs" />
+    <Compile Include="../../Assets/FortressUnited/Editor/**/*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/FortressUnited.Core.csproj" />
+    <Reference Include="$(UnityManaged)/UnityEngine/*.dll" Private="false" />
+    <Reference Include="../../Library/ScriptAssemblies/Unity.InputSystem.dll" Private="false" />
+  </ItemGroup>
+</Project>

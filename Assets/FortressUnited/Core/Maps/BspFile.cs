@@ -38,6 +38,16 @@ namespace FortressUnited.Core.Maps
             public int Width, Height;
             /// <summary>True if the pixels are inside the BSP (not from a WAD).</summary>
             public bool Embedded;
+            internal int DataOffset, DataLength;
+        }
+
+        byte[] raw;
+
+        /// <summary>Decodes an embedded texture's pixels; null if it lives in a WAD.</summary>
+        public MipTexture DecodeTexture(int index)
+        {
+            var t = Textures[index];
+            return t.Embedded ? MipTexture.Decode(raw, t.DataOffset, t.DataLength) : null;
         }
 
         public struct TexInfo
@@ -121,7 +131,7 @@ namespace FortressUnited.Core.Maps
                     throw new InvalidDataException($"lump {(Lump)i} out of range");
             }
 
-            var bsp = new BspFile();
+            var bsp = new BspFile { raw = data };
 
             // Entities: text, NUL terminated
             int entLen = len[(int)Lump.Entities];
@@ -157,6 +167,8 @@ namespace FortressUnited.Core.Maps
                         Width = r.Int(t + 16),
                         Height = r.Int(t + 20),
                         Embedded = r.Int(t + 24) != 0,
+                        DataOffset = t,
+                        DataLength = ofs[(int)Lump.Textures] + len[(int)Lump.Textures] - t,
                     };
                 }
             }
