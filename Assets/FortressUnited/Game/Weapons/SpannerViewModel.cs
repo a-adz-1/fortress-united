@@ -5,7 +5,8 @@ namespace FortressUnited.Game
 {
     /// <summary>
     /// A melee weapon held in first person: the engineer's plasma spanner,
-    /// or the shock prod every other class carries. Points the business end
+    /// or the shock prod (the scout, soldier, demoman, heavy, sniper and
+    /// pyro's melee; the spy, medic and civilian have their own). Points the business end
     /// forward (using the model's Grip and Arc_* markers) and swings on left
     /// click. The spanner keeps a live plasma arc between its jaws that
     /// flares on a swing; the prod only zaps between its prongs on a hit.

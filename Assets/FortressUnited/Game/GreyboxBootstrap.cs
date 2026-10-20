@@ -21,7 +21,7 @@ namespace FortressUnited.Game
         public GameObject SpannerBlue, SpannerRed;
         [Tooltip("Class models by team, for dummies and bodies (found by name in the editor if left empty).")]
         public GameObject MedicBlue, MedicRed;
-        [Tooltip("Shock prod, the all-class melee (found by name in the editor if left empty).")]
+        [Tooltip("Shock prod, the melee for classes without their own (found by name in the editor if left empty).")]
         public GameObject ShockProd;
         public Texture2D ShockProdBlue, ShockProdRed;
         [Tooltip("Conc grenade model (found by name in the editor if left empty).")]

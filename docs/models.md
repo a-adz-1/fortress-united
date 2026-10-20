@@ -38,7 +38,8 @@ rigged as a humanoid, with run/jump/crouch/shoot animations.
 What the player holds on screen (`v_` models). Each also needs a simpler
 world version for other players to see (`p_` models), listed below.
 
-- [x] Crowbar / axe, all classes (`v_tfc_crowbar`): replaced by the shock prod,
+- [x] Crowbar / axe (`v_tfc_crowbar`): replaced by the shock prod for the scout,
+  soldier, demoman, heavy, sniper and pyro,
   `Art/Weapons/ShockProd`, team skins, zaps between the prongs on a hit
 - [~] Spanner, engineer (`v_tfc_spanner`): blue and red plasma spanners in
   `Art/Spanner` (25k triangles, 2K textures) with a live plasma arc and a
