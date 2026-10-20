@@ -101,7 +101,8 @@ Simplified versions of the first-person weapons (`p_` models).
 - [x] Concussion grenade (`conc_grenade`): `Art/Grenades`, one model with a
   glow mask tinted per team; TFC's conc push and hand-conc in the greybox (F)
 - [ ] Nail grenade (`ngrenade`)
-- [ ] MIRV grenade (`mirv_grenade`) and bomblets (`bomblet`)
+- [x] MIRV grenade (`mirvgrenade`): `Art/Grenades`, red and blue skins on one
+  shape, glow mask tinted per team
 - [ ] Napalm grenade (`napalm`)
 - [ ] Gas / hallucination grenade, spy (`spy_grenade`)
 - [ ] EMP grenade (`emp_grenade`)

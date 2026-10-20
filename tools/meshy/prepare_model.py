@@ -27,6 +27,8 @@ What it does:
 - With --clear-box x0,x1,z0,z1: deletes faces lying entirely inside that
   X/Z box at any depth (repeatable) (e.g. an effect Meshy baked into the mesh that the game draws
   live instead).
+- --glow-bright V: only that colour brighter than V glows; dimmer areas of the
+  same colour are team paint and stay in the base colour.
 - With --glow red|blue: the glowing parts Meshy painted in that colour become
   <Name>_Emission.png (a white mask the game tints per team) and turn dark
   glass in the base colour, so one model serves both teams.
@@ -60,6 +62,8 @@ def parse_args():
     p.add_argument("--marker", action="append", default=[])
     p.add_argument("--clear-box", action="append", default=[])
     p.add_argument("--glow", default="", choices=["", "red", "blue"])
+    p.add_argument("--glow-bright", type=float, default=0.0,
+                   help="only that colour brighter than this glows; dimmer is team paint (e.g. 0.82)")
     p.add_argument("--no-bake", action="store_true")
     p.add_argument("--gloss", type=float, default=0.75)
     return p.parse_args(argv)
@@ -214,23 +218,39 @@ def glb_textures(a):
 
     if base is not None:
         if a.glow:
-            ch = 0 if a.glow == "red" else 2
-            others = [c for c in range(3) if c != ch]
             glass = np.array([0.05, 0.055, 0.06], dtype=np.float32)
+
+            def hue_of(p):
+                r, g, b = p[:, 0], p[:, 1], p[:, 2]
+                mx, mn = p[:, :3].max(axis=1), p[:, :3].min(axis=1)
+                d = np.maximum(mx - mn, 1e-6)
+                h = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60
+                return h
+
+            def in_hue(p):
+                h = hue_of(p)
+                # Red glows run 340-20 degrees, blue (cyan to royal) 170-250
+                return ((h >= 340) | (h <= 20)) if a.glow == "red" else ((h >= 170) & (h <= 250))
 
             def glow_mask(p):
                 mx, mn = p[:, :3].max(axis=1), p[:, :3].min(axis=1)
                 sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
-                hue_ok = (p[:, ch] >= mx - 1e-6) & (p[:, others[0]] < p[:, ch] * 0.7) & (p[:, others[1]] < p[:, ch] * 0.7)
+                hue_ok = in_hue(p)
                 # Soft: how strongly the pixel is a bright saturated glow colour
-                return np.clip((sat - 0.35) / 0.3, 0, 1) * np.clip((mx - 0.15) / 0.35, 0, 1) * hue_ok
+                m = np.clip((sat - 0.35) / 0.3, 0, 1) * np.clip((mx - 0.15) / 0.35, 0, 1) * hue_ok
+                if a.glow_bright > 0:   # paint in the same colour stays paint
+                    m = m * np.clip((mx - a.glow_bright) / 0.1, 0, 1)
+                return m
 
             def neutral(p):
                 # Looser than the glow mask, so dim edges of the painted glow go too
                 mx, mn = p[:, :3].max(axis=1), p[:, :3].min(axis=1)
                 sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
-                hue_ok = (p[:, ch] >= mx - 1e-6) & (p[:, others[0]] < p[:, ch] * 0.8) & (p[:, others[1]] < p[:, ch] * 0.8)
-                m = (np.clip((sat - 0.2) / 0.2, 0, 1) * np.clip((mx - 0.06) / 0.15, 0, 1) * hue_ok)[:, None]
+                hue_ok = in_hue(p)
+                m = np.clip((sat - 0.2) / 0.2, 0, 1) * np.clip((mx - 0.06) / 0.15, 0, 1) * hue_ok
+                if a.glow_bright > 0:
+                    m = m * np.clip((mx - (a.glow_bright - 0.06)) / 0.1, 0, 1)
+                m = m[:, None]
                 q = p.copy()
                 q[:, :3] = p[:, :3] * (1 - m) + glass * m
                 return q

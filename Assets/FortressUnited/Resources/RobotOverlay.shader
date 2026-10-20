@@ -9,7 +9,7 @@ Shader "FortressUnited/RobotOverlay"
 {
     Properties
     {
-        [HDR] _Color ("Team colour", Color) = (0.26, 2.18, 2.5, 1)
+        [HDR] _Color ("Team colour", Color) = (0.17, 1.69, 2.5, 1)
         [HDR] _HeatColor ("Heat colour", Color) = (3, 0.9, 0.2, 1)
         [HDR] _VirusColor ("Virus colour", Color) = (0.4, 2.5, 0.6, 1)
         _Inflate ("Push out along normals (m)", Float) = 0.004

@@ -7,7 +7,7 @@ Shader "FortressUnited/HologramBanner"
 {
     Properties
     {
-        [HDR] _Color ("Team colour", Color) = (0.1, 0.8, 0.94, 1)
+        [HDR] _Color ("Team colour", Color) = (0.07, 0.65, 0.97, 1)
         [HDR] _Core ("Hot colour", Color) = (0.6, 1, 1, 1)
         _Logo ("Logo (alpha)", 2D) = "black" {}
         _LogoRect ("Logo rect in banner UV (x, y, w, h)", Vector) = (0.12, 0.38, 0.76, 0.5)
