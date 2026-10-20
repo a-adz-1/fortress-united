@@ -4,8 +4,9 @@ using UnityEngine.Rendering;
 namespace FortressUnited.Game
 {
     /// <summary>
-    /// The maps' mood: a low dusk sun (at the map's own angle), a tinted sky,
-    /// dim ambient light with rooms lit by their own fixtures (MapLights), fog,
+    /// The maps' mood: a bright day (the default theme; night, dusk, snow come
+    /// later) with the sun at the map's own angle, blue sky, light haze, and
+    /// rooms lit by their own fixtures on top (MapLights),
     /// and reflections captured from the map itself (a cubemap rendered from
     /// its middle), so glossy panels and water reflect the map and sky.
     /// Per-map themes (night, snow, desert) come later.
@@ -16,30 +17,30 @@ namespace FortressUnited.Game
         {
             var sun = new GameObject("Sun").AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.84f, 0.7f);
-            sun.intensity = 2.1f;
+            sun.color = new Color(1f, 0.96f, 0.9f);
+            sun.intensity = 2.4f;
             sun.shadows = LightShadows.Soft;
             sun.transform.rotation = Quaternion.Euler(32, -40, 0);
 
             var sky = new Material(Shader.Find("Skybox/Procedural"));
             sky.SetFloat("_SunSize", 0.035f);
-            sky.SetFloat("_AtmosphereThickness", 1.35f);
-            sky.SetColor("_SkyTint", new Color(0.42f, 0.42f, 0.62f));
-            sky.SetColor("_GroundColor", new Color(0.16f, 0.17f, 0.2f));
-            sky.SetFloat("_Exposure", 1.15f);
+            sky.SetFloat("_AtmosphereThickness", 0.9f);
+            sky.SetColor("_SkyTint", new Color(0.46f, 0.52f, 0.62f));
+            sky.SetColor("_GroundColor", new Color(0.36f, 0.38f, 0.42f));
+            sky.SetFloat("_Exposure", 1.35f);
             RenderSettings.skybox = sky;
             RenderSettings.sun = sun;
 
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            // Low ambient: rooms are lit by their own fixtures (MapLights), so interiors have mood
-            RenderSettings.ambientSkyColor = new Color(0.36f, 0.4f, 0.54f);
-            RenderSettings.ambientEquatorColor = new Color(0.27f, 0.26f, 0.31f);
-            RenderSettings.ambientGroundColor = new Color(0.11f, 0.11f, 0.13f);
+            // Bright day outside; rooms still get their own fixtures' light (MapLights) on top
+            RenderSettings.ambientSkyColor = new Color(0.58f, 0.66f, 0.82f);
+            RenderSettings.ambientEquatorColor = new Color(0.4f, 0.41f, 0.45f);
+            RenderSettings.ambientGroundColor = new Color(0.2f, 0.19f, 0.18f);
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;
-            RenderSettings.fogDensity = 0.006f;
-            RenderSettings.fogColor = new Color(0.45f, 0.47f, 0.58f);
+            RenderSettings.fogDensity = 0.0025f;
+            RenderSettings.fogColor = new Color(0.66f, 0.74f, 0.86f);
             DynamicGI.UpdateEnvironment();
 
             if (map != null)

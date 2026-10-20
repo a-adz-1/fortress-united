@@ -213,7 +213,7 @@ namespace FortressUnited.Game
 
         // ------------------------------------------------------------ sun
 
-        /// <summary>The map's own sun angle (light_environment's pitch), in our dusk colour leaning to the map's.</summary>
+        /// <summary>The map's own sun angle (light_environment's pitch), in daylight with a hint of the map's colour.</summary>
         static void UseMapSun(BspFile bsp, Light sun)
         {
             if (sun == null)
@@ -225,12 +225,12 @@ namespace FortressUnited.Game
                 float pitch = float.TryParse(e.Get("pitch"), NumberStyles.Float, CultureInfo.InvariantCulture, out var pv) ? pv : -50;
                 var angles = ParseVec(e.Get("angles"));
                 float yaw = angles.Y;
-                // GoldSrc pitch is negative looking down; keep the sun a little lower than noon for long shadows
-                float elevation = Mathf.Clamp(-pitch, 20, 55);
+                // GoldSrc pitch is negative looking down; kept between mid-morning and near noon
+                float elevation = Mathf.Clamp(-pitch, 35, 65);
                 sun.transform.rotation = Quaternion.Euler(elevation, -yaw + 90, 0);
                 var l = ParseVec4(e.Get("_light"));
                 if (l.x + l.y + l.z > 0)
-                    sun.color = Color.Lerp(sun.color, ToColour(new Vector3(l.x, l.y, l.z)), 0.35f);
+                    sun.color = Color.Lerp(sun.color, ToColour(new Vector3(l.x, l.y, l.z)), 0.12f);   // a hint of the map's sun colour, not its full tint
                 return;
             }
         }

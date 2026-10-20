@@ -265,16 +265,25 @@ namespace FortressUnited.Game
                 return;
             var old = MeanLinear(rgba);
             mat.shader = water;
-            mat.SetColor("_DeepColor", new Color(old.x, old.y, old.z) * 0.6f);
-            mat.SetColor("_ShallowColor", new Color(old.x, old.y, old.z) * 1.6f + new Color(0.02f, 0.05f, 0.05f));
+            // Clear bright water: a clean teal, leaning a little towards the old texture's colour
+            var oldColour = new Color(old.x, old.y, old.z);
+            mat.SetColor("_ShallowColor", Color.Lerp(new Color(0.12f, 0.5f, 0.55f), oldColour * 2f, 0.25f));
+            mat.SetColor("_DeepColor", Color.Lerp(new Color(0.03f, 0.2f, 0.28f), oldColour, 0.2f));
+            mat.SetFloat("_Clarity", 0.5f);
             if (name.IndexOf("lava", StringComparison.OrdinalIgnoreCase) >= 0)
             {
+                mat.SetColor("_ShallowColor", oldColour * 2.5f);
+                mat.SetColor("_DeepColor", oldColour);
                 mat.SetFloat("_Glow", 1);
                 mat.SetFloat("_WaveSpeed", 0.08f);
                 mat.SetFloat("_WaveScale", 2.5f);
             }
             else if (name.IndexOf("slime", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                mat.SetColor("_ShallowColor", oldColour * 1.8f);
+                mat.SetColor("_DeepColor", oldColour * 0.7f);
                 mat.SetFloat("_Clarity", 0.1f);
+            }
             mat.renderQueue = (int)RenderQueue.Transparent;
         }
     }

@@ -180,7 +180,12 @@ namespace FortressUnited.Game
         Feed MakeFeed(int team)
         {
             var t = (TeamColours.Team)(team + 1);
-            var feed = new Feed { Team = team, Texture = new RenderTexture(W, H, 16, RenderTextureFormat.ARGB32) { name = "Screen " + t } };
+            // Mipmapped and filtered, so text and lines stay smooth when the screen is seen small or at an angle
+            var feed = new Feed { Team = team, Texture = new RenderTexture(W, H, 16, RenderTextureFormat.ARGB32)
+            {
+                name = "Screen " + t, useMipMap = true, autoGenerateMips = true,
+                filterMode = FilterMode.Trilinear, anisoLevel = 8,
+            } };
             var rig = new GameObject("Screen Feed " + t);
             rig.transform.SetParent(transform, false);
             rig.transform.position = new Vector3(0, -30000 - 3000 * rigs++, 0);   // far enough apart that no feed sees another

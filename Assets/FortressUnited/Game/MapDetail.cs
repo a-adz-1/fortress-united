@@ -243,11 +243,11 @@ namespace FortressUnited.Game
             return runs;
         }
 
-        /// <summary>A floor edge here drops at least 1.2 m on its outward side, and isn't against a wall.</summary>
+        /// <summary>A floor edge here drops at least 2.5 m on its outward side, and isn't against a wall.</summary>
         static bool Ledge(Vector3 edgePoint, Vector3 outward)
         {
             Vector3 beyond = edgePoint + outward * 0.25f + Vector3.up * 0.3f;
-            if (Physics.Raycast(beyond, Vector3.down, 1.5f))
+            if (Physics.Raycast(beyond, Vector3.down, 2.8f))
                 return false;
             if (Physics.Raycast(edgePoint + Vector3.up * 0.5f - outward * 0.1f, outward, 0.5f))
                 return false;

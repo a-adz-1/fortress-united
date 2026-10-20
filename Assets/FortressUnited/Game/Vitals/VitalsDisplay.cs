@@ -31,7 +31,11 @@ namespace FortressUnited.Game
 
         void Awake()
         {
-            Texture = new RenderTexture(Width, Height, 16, RenderTextureFormat.ARGB32) { name = "VitalsDisplay" };
+            Texture = new RenderTexture(Width, Height, 16, RenderTextureFormat.ARGB32)
+            {
+                name = "VitalsDisplay", useMipMap = true, autoGenerateMips = true,
+                filterMode = FilterMode.Trilinear, anisoLevel = 8,     // smooth when seen small or at an angle
+            };
             var unlit = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Texture");
             ScreenMaterial = new Material(unlit) { name = "VitalsScreen", mainTexture = Texture };
 

@@ -48,6 +48,14 @@ namespace FortressUnited.EditorTools
             d.MeleeShowcase = System.Environment.GetEnvironmentVariable("DEMO_MODE") == "melee";
             d.LookTour = System.Environment.GetEnvironmentVariable("DEMO_MODE") == "look";
             d.OriginalTextures = System.Environment.GetEnvironmentVariable("DEMO_MATERIALS") == "off";
+            // DEMO_SIZE=2560x1440 renders bigger (scale it down when encoding, for smoother edges)
+            var size = System.Environment.GetEnvironmentVariable("DEMO_SIZE");
+            if (!string.IsNullOrEmpty(size) && size.Contains("x"))
+            {
+                var wh = size.Split('x');
+                d.Width = int.Parse(wh[0]);
+                d.Height = int.Parse(wh[1]);
+            }
             d.Stage = System.Environment.GetEnvironmentVariable("DEMO_STAGE") ?? "open";
             d.Arms = Load<GameObject>("Characters/Medic/Medic_Blue_Arms.fbx");
             d.ShockProd = Load<GameObject>("Weapons/ShockProd.fbx");

@@ -16,10 +16,10 @@ Shader "FortressUnited/SciFiSurface"
         _AccentColor ("Accent paint", Color) = (0.16, 0.17, 0.19, 1)
         _Accent ("Team paint (0 none, 1 team bands)", Range(0, 1)) = 0
         [HDR] _GlowColor ("Glow", Color) = (1.4, 2.2, 3.0, 1)
-        _GlowAmount ("Glow line strength", Range(0, 3)) = 0.25
+        _GlowAmount ("Glow line strength", Range(0, 3)) = 0
         _LightStrips ("Share of ceiling panels lit", Range(0, 1)) = 0.22
-        _WallPanel ("Wall panel size (m)", Vector) = (2.4, 1.2, 0, 0)
-        _FloorPanel ("Floor panel size (m)", Vector) = (1.6, 1.6, 0, 0)
+        _WallPanel ("Wall panel size (m)", Vector) = (3.2, 1.6, 0, 0)
+        _FloorPanel ("Floor panel size (m)", Vector) = (2.4, 2.4, 0, 0)
         _Tone ("Brightness from the old texture", Float) = 1
         _Metal ("Metal (trims, doors)", Range(0, 1)) = 0
     }
@@ -123,7 +123,7 @@ Shader "FortressUnited/SciFiSurface"
                 float2 q = p / size;
                 float2 cell = floor(q);
                 float h = hash(cell);
-                float2 split = h < 0.18 ? float2(1, 2) : (h < 0.28 ? float2(2, 1) : float2(1, 1));
+                float2 split = h < 0.1 ? float2(1, 2) : (h < 0.16 ? float2(2, 1) : float2(1, 1));
                 float2 fs = frac(q) * split;
                 float2 id = cell * 3 + floor(fs);
                 float2 f = frac(fs);
@@ -140,7 +140,7 @@ Shader "FortressUnited/SciFiSurface"
                 float fade = saturate(2 - aa * 170);             // seams: gone by ~1.2 cm a pixel
                 float fineFade = saturate(2 - aa * 220);         // studs, slats, dots: gone by ~1 cm a pixel
                 const float gw = 0.006;
-                float groove = (1 - smoothstep(gw - aa, gw + aa, d)) * fade;
+                float groove = (1 - smoothstep(gw - aa * 1.5, gw + aa * 1.5, d)) * fade;     // a 3-pixel soft edge, so seams don't step
                 float bevel = (1 - smoothstep(0.006, 0.022, d)) * (1 - groove) * fade;
 
                 half3 albedo = kind == 0 ? _WallColor.rgb : (kind == 1 ? _FloorColor.rgb : _CeilColor.rgb);
@@ -159,13 +159,13 @@ Shader "FortressUnited/SciFiSurface"
                 float period = _Accent > 0.5 ? 3 : 5;
                 float row = fmod(fmod(cell.y, period) + period, period);
                 if (kind == 0 && row < 0.5 && bandW > 0.01) { albedo = lerp(albedo, bandColour, bandW); smooth = 0.5; }
-                else if (kind == 0 && h3 < 0.12) albedo *= 0.86;      // the odd panel a shade darker
+                else if (kind == 0 && h3 < 0.06) albedo *= 0.92;      // the odd panel a shade darker
                 // Slight per-panel shade and soft wear
                 albedo *= (0.97 + 0.05 * h5) * (0.97 + 0.04 * noise(p * 1.7));
                 albedo *= _Tone;
 
                 float2 bump = toEdge * bevel * 0.9;                // chamfer leans the normal towards the seam
-                half occl = 1 - groove * 0.85 - bevel * 0.15;
+                half occl = 1 - groove * 0.5 - bevel * 0.1;
                 half3 glow = 0;
                 float2 c = (f - 0.5) * cs;                        // position in the panel from its centre (m)
 
@@ -174,7 +174,7 @@ Shader "FortressUnited/SciFiSurface"
                     // Vent grille: an inset rectangle of horizontal slats
                     float2 half_ = cs * 0.5 - 0.12;
                     float inside = step(abs(c.x), half_.x) * step(abs(c.y), half_.y);
-                    float slat = frac(c.y / 0.035);
+                    float slat = frac(c.y / 0.06);
                     albedo = lerp(albedo, albedo * lerp(0.25, 0.6, lerp(0.45, step(0.45, slat), fineFade)), inside);
                     bump += float2(0, (slat < 0.45 ? -0.6 : 0.4)) * inside * fineFade;
                     occl *= lerp(1, 0.6, inside);
@@ -205,7 +205,7 @@ Shader "FortressUnited/SciFiSurface"
                     // keeping the same total light, so it stays a steady line instead of dashes
                     float px = max(fwidth(q.y) * size.y, 1e-4);
                     float lw = max(0.006, px);
-                    float seamLine = (1 - smoothstep(lw * 0.5, lw * 0.5 + px, toSeam)) * min(1, 0.006 / px * 1.5);
+                    float seamLine = (1 - smoothstep(lw * 0.5 - px * 0.75, lw * 0.5 + px * 1.5, toSeam)) * min(1, 0.006 / px * 1.5);
                     glow += seamGlow * seamLine * seamStrength;
                 }
                 // Indicator lights: a little row of coloured dots near the corner of some wall panels
@@ -238,7 +238,7 @@ Shader "FortressUnited/SciFiSurface"
                 s.albedo = albedo;
                 s.metallic = metal;
                 s.smoothness = smooth * (1 - groove * 0.6);
-                albedo *= 1 - groove * 0.7;                       // seams read as dark lines
+                albedo *= 1 - groove * 0.35;                      // seams: fine dark lines, not a grid drawn over everything
                 s.albedo = albedo;
                 s.occlusion = occl;
                 s.emission = glow;
