@@ -31,7 +31,7 @@ rigged as a humanoid, with run/jump/crouch/shoot animations.
 - [ ] Pyro (`player/pyro`)
 - [ ] Spy (`player/spy`)
 - [ ] Engineer (`player/engineer`)
-- [ ] Civilian (`player/civilian`)
+- [ ] Civilian (`player/civilian`): a big robot dog VIP, rigid parts animated in code
 
 ## First-person weapons
 
@@ -39,7 +39,7 @@ What the player holds on screen (`v_` models). Each also needs a simpler
 world version for other players to see (`p_` models), listed below.
 
 - [x] Crowbar / axe (`v_tfc_crowbar`): replaced by the shock prod for the scout,
-  soldier, demoman, heavy, sniper and pyro,
+  soldier, demoman, heavy, sniper, pyro and civilian (in the robot dog's mouth),
   `Art/Weapons/ShockProd`, team skins, zaps between the prongs on a hit
 - [~] Spanner, engineer (`v_tfc_spanner`): blue and red plasma spanners in
   `Art/Spanner` (25k triangles, 2K textures) with a live plasma arc and a
@@ -60,7 +60,7 @@ world version for other players to see (`p_` models), listed below.
 - [ ] Assault cannon, HWGuy (`v_tfac`)
 - [x] Railgun, engineer (`v_tfc_railgun`): `Art/Weapons/RailPistol`
 - [ ] Tranquiliser gun, spy (`v_tfc_pistol`)
-- [ ] Umbrella, civilian (`v_umbrella`)
+- [ ] Umbrella, civilian (`v_umbrella`) (dropped: the civilian uses the shock prod)
 - [ ] Hand holding a primed grenade (`v_grenade`)
 
 ## World weapons (seen in other players' hands)
