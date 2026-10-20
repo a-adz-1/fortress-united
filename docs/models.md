@@ -24,9 +24,9 @@ rigged as a humanoid, with run/jump/crouch/shoot animations.
 - [ ] Soldier (`player/soldier`)
 - [ ] Demoman (`player/demo`)
 - [~] Medic (`player/medic`): blue and red rigged robots in
-  `Art/Characters/Medic` (Humanoid, 20k triangles, walk cycle) used for
-  greybox dummies and bodies; needs idle, run, crouch, jump, swim, death
-  and the repair-kit push
+  `Art/Characters/Medic` (Humanoid, 20k triangles) with walk, walk
+  backward, run, crouch walk, jump, swim, heal push and death; still
+  wants idle, strafes, run backward, crouch idle and treading water
 - [ ] Heavy Weapons Guy (`player/hvyweapon`)
 - [ ] Pyro (`player/pyro`)
 - [ ] Spy (`player/spy`)

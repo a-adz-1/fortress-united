@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
@@ -15,8 +17,18 @@ namespace FortressUnited.Game
         public RobotFx Fx { get; private set; }
         /// <summary>Where a flatline screen goes: sized and facing out of the chest.</summary>
         public Transform ScreenAnchor { get; private set; }
+        /// <summary>Movement-driven animation, when spawned with a clip set.</summary>
+        public CharacterAnimator Anim { get; private set; }
 
         PlayableGraph graph;
+
+        public static RobotCharacter Spawn(GameObject prefab, Vector3 feet, float yaw, Color team, IDictionary<string, AnimationClip> clips)
+        {
+            var c = Spawn(prefab, feet, yaw, team);
+            if (clips != null && clips.Count > 0)
+                c.Anim = CharacterAnimator.Attach(c.Animator, clips);
+            return c;
+        }
 
         public static RobotCharacter Spawn(GameObject prefab, Vector3 feet, float yaw, Color team, AnimationClip clip = null)
         {
@@ -59,6 +71,35 @@ namespace FortressUnited.Game
         {
             if (graph.IsValid())
                 graph.Destroy();
+            if (Anim != null)
+            {
+                Anim.Stop();
+                Destroy(Anim);
+                Anim = null;
+            }
+        }
+
+        /// <summary>
+        /// Destroyed: plays the start of the death clip (the hit landing), then
+        /// hands over to the ragdoll, thrown with the given velocity.
+        /// </summary>
+        public void Die(Vector3 velocity, float heartRate, float deathClipSeconds = 0.3f)
+        {
+            float length = Anim != null ? Anim.Die() : 0;
+            StartCoroutine(Ragdoll(velocity, heartRate, length > 0 ? Mathf.Min(deathClipSeconds, length) : 0));
+        }
+
+        IEnumerator Ragdoll(Vector3 velocity, float heartRate, float delay)
+        {
+            if (delay > 0)
+                yield return new WaitForSeconds(delay);
+            var bones = Bones;
+            Stop();
+            foreach (var col in GetComponents<Collider>())
+                Destroy(col);
+            foreach (var w in GetComponents<DummyWalker>())
+                Destroy(w);
+            Corpse.Create(gameObject, bones, velocity, heartRate, ScreenAnchor);
         }
 
         /// <summary>Ragdoll bones for Corpse.Create.</summary>
@@ -67,31 +108,84 @@ namespace FortressUnited.Game
         void OnDestroy() => Stop();
     }
 
-    /// <summary>Walks a character back and forth along a line, for a moving target.</summary>
+    /// <summary>
+    /// Moves a character through a demo routine for the greybox, so every
+    /// animation shows: walk out, walk back (backwards), crouch walk out,
+    /// turn and run back, stand, jump, swim on the spot. Feeds its
+    /// CharacterAnimator.
+    /// </summary>
     public sealed class DummyWalker : MonoBehaviour
     {
-        public float Speed = 1.3f;     // m/s, about the walk cycle's stride
         public float Distance = 3;
-        Vector3 start, dir;
-        float travelled;
-        int sign = 1;
+
+        struct Step { public string Name; public float Speed, Seconds; public bool Crouch, Jump, Swim; }
+        static readonly Step[] Routine =
+        {
+            new Step { Name = "walk", Speed = 1.3f },
+            new Step { Name = "walk backward", Speed = -1.0f },
+            new Step { Name = "crouch walk", Speed = 0.8f, Crouch = true },
+            new Step { Name = "turn", Seconds = 0.4f },     // face back the way it came
+            new Step { Name = "run", Speed = 4.5f },
+            new Step { Name = "stand", Seconds = 1.5f },
+            new Step { Name = "jump", Seconds = 1.6f, Jump = true },
+            new Step { Name = "swim", Seconds = 3, Swim = true },
+            new Step { Name = "stand", Seconds = 1 },
+        };
+
+        RobotCharacter character;
+        Vector3 start, axis;
+        float along, stepTime, height, verticalSpeed;
+        int step;
+        bool facingOut = true;
+
+        public string Doing => Routine[step].Name;
 
         void Start()
         {
+            character = GetComponent<RobotCharacter>();
             start = transform.position;
-            dir = transform.forward;
+            axis = transform.forward;
         }
 
         void Update()
         {
-            travelled += Speed * Time.deltaTime * sign;
-            if (travelled > Distance || travelled < 0)
+            var s = Routine[step];
+            float dt = Time.deltaTime;
+            stepTime += dt;
+            Vector3 facing = facingOut ? axis : -axis;
+            float moved = s.Speed * dt;          // + forward, - backward, relative to facing
+            float delta = facingOut ? moved : -moved;
+            along += delta;
+
+            bool done = s.Seconds > 0 ? stepTime >= s.Seconds : (along >= Distance || along <= 0);
+            if (s.Jump)
             {
-                sign = -sign;
-                travelled = Mathf.Clamp(travelled, 0, Distance);
+                if (stepTime < dt * 1.5f) verticalSpeed = 4.2f;
+                verticalSpeed -= 9.8f * dt;
+                height = Mathf.Max(0, height + verticalSpeed * dt);
             }
-            transform.position = start + dir * travelled;
-            transform.rotation = Quaternion.LookRotation(dir * sign, Vector3.up);
+            along = Mathf.Clamp(along, 0, Distance);
+            transform.position = start + axis * along + Vector3.up * (s.Swim ? 0.6f : height);
+            transform.rotation = Quaternion.LookRotation(facing, Vector3.up);
+
+            if (character != null && character.Anim != null)
+            {
+                var anim = character.Anim;
+                anim.Velocity = new Vector3(0, 0, s.Swim ? 1.0f : s.Speed);
+                anim.Crouched = s.Crouch;
+                anim.InWater = s.Swim;
+                anim.Grounded = !(s.Jump && (height > 0.01f || stepTime < 0.1f));
+            }
+
+            if (done)
+            {
+                step = (step + 1) % Routine.Length;
+                stepTime = 0;
+                height = 0;
+                // Out along the line facing out; after the turn, run back facing in
+                if (step == 0) facingOut = true;
+                if (Routine[step].Name == "turn") facingOut = false;
+            }
         }
     }
 }

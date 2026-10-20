@@ -21,7 +21,8 @@ namespace FortressUnited.Game
         public GameObject SpannerBlue, SpannerRed;
         [Tooltip("Class models by team, for dummies and bodies (found by name in the editor if left empty).")]
         public GameObject MedicBlue, MedicRed;
-        public AnimationClip MedicBlueWalk, MedicRedWalk;
+        [Tooltip("Their animation clips (all of a model's clips are found in the editor if left empty).")]
+        public AnimationClip[] MedicBlueClips, MedicRedClips;
 
         void Start()
         {
@@ -78,13 +79,16 @@ namespace FortressUnited.Game
             if (SpannerRed == null) SpannerRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Spanner/Spanner_Red.fbx");
             if (MedicBlue == null) MedicBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Blue.fbx");
             if (MedicRed == null) MedicRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Red.fbx");
-            if (MedicBlueWalk == null) MedicBlueWalk = Clip(art + "Characters/Medic/Medic_Blue.fbx");
-            if (MedicRedWalk == null) MedicRedWalk = Clip(art + "Characters/Medic/Medic_Red.fbx");
+            if (MedicBlueClips == null || MedicBlueClips.Length == 0) MedicBlueClips = Clips(art + "Characters/Medic/Medic_Blue.fbx");
+            if (MedicRedClips == null || MedicRedClips.Length == 0) MedicRedClips = Clips(art + "Characters/Medic/Medic_Red.fbx");
 #endif
             bool red = Team == 2;
             // The other team's medic stands in as the enemy
             driver.EnemyModel = red ? MedicBlue : MedicRed;
-            driver.EnemyWalk = red ? MedicBlueWalk : MedicRedWalk;
+            driver.EnemyClips.Clear();
+            foreach (var clip in (red ? MedicBlueClips : MedicRedClips) ?? new AnimationClip[0])
+                if (clip != null)
+                    driver.EnemyClips[clip.name] = clip;
             driver.EnemyColour = red ? new Color(0.3f, 0.7f, 1f) : new Color(1f, 0.3f, 0.25f);
             var cam = player.GetComponentInChildren<Camera>();
             if (cam != null)
@@ -106,12 +110,13 @@ namespace FortressUnited.Game
         }
 
 #if UNITY_EDITOR
-        static AnimationClip Clip(string path)
+        static AnimationClip[] Clips(string path)
         {
+            var list = new System.Collections.Generic.List<AnimationClip>();
             foreach (var o in UnityEditor.AssetDatabase.LoadAllAssetsAtPath(path))
                 if (o is AnimationClip c && !c.name.StartsWith("__preview__"))
-                    return c;
-            return null;
+                    list.Add(c);
+            return list.ToArray();
         }
 #endif
     }

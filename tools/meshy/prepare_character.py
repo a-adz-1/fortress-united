@@ -4,12 +4,16 @@ Make a rigged Meshy character game-ready for Fortress United (run inside Blender
     blender -b --factory-startup --python tools/meshy/prepare_character.py -- \
         --fbx path/to/Meshy_AI_..._Animation_Walking_frame_rate_30.fbx \
         --name Medic_Blue --out Assets/FortressUnited/Art/Characters/Medic \
-        [--texsize 2048] [--tris 40000] [--marker ChestScreen:Spine:0.21] [--preview out.png]
+        [--texsize 2048] [--tris 40000] [--marker ChestScreen:Spine:1.236] \
+        [--anim Jump=path/to/medic_blue_jump.glb ...]
 
 What it does:
 - Keeps the armature, skin weights and animation; strips embedded textures.
 - Decimates only if the mesh is over --tris (Meshy rigs are usually ~20k).
 - Names the animation after the file (..._Animation_Walking_... -> Walking).
+- --anim NAME=FILE (repeatable, .glb or .fbx) adds the animation from another
+  export of the same rig (Meshy downloads each animation separately); the
+  file's own mesh and helpers are thrown away. All clips export as takes.
 - Writes <Name>_BaseColor.png, <Name>_MetallicSmoothness.png (and _Normal /
   _Emission if present) for Editor/ArtPostprocessor.cs.
 - --marker NAME:BONE:HEIGHT adds an empty on the front of the body at that
@@ -41,8 +45,42 @@ def parse_args():
     p.add_argument("--texsize", type=int, default=2048)
     p.add_argument("--tris", type=int, default=40000)
     p.add_argument("--marker", action="append", default=[])
-    p.add_argument("--preview", default="")
+    p.add_argument("--anim", action="append", default=[])
     return p.parse_args(argv)
+
+
+def fcurves(action):
+    """An action's curves (Blender 4.4+ keeps them in layers / channel bags)."""
+    if hasattr(action, "fcurves"):
+        return list(action.fcurves)
+    return [fc for layer in action.layers for strip in layer.strips for bag in strip.channelbags for fc in bag.fcurves]
+
+
+def import_animation(name, path, arm):
+    """Brings in the action from another export of the same rig, renamed NAME."""
+    before_objects = set(bpy.data.objects)
+    before_actions = set(bpy.data.actions)
+    if path.lower().endswith((".glb", ".gltf")):
+        bpy.ops.import_scene.gltf(filepath=path)
+    else:
+        bpy.ops.import_scene.fbx(filepath=path)
+    new_actions = [a for a in bpy.data.actions if a not in before_actions]
+    # Keep the action that animates the skeleton, drop everything else
+    action = next((a for a in new_actions if any("pose.bones" in fc.data_path for fc in fcurves(a))), None)
+    for o in [o for o in bpy.data.objects if o not in before_objects]:
+        bpy.data.objects.remove(o, do_unlink=True)
+    for a in new_actions:
+        if a is not action:
+            bpy.data.actions.remove(a)
+    if action is None:
+        raise SystemExit(f"{path}: no skeleton animation found")
+    missing = {fc.data_path.split('"')[1] for fc in fcurves(action) if "pose.bones" in fc.data_path} - set(arm.data.bones.keys())
+    if missing:
+        raise SystemExit(f"{path}: bones not in the rig: {sorted(missing)}")
+    action.name = name
+    action.use_fake_user = True
+    print(f"animation {name}: frames {tuple(round(f, 1) for f in action.frame_range)} from {os.path.basename(path)}")
+    return action
 
 
 def main():
@@ -66,6 +104,14 @@ def main():
         scene.name = clip
         scene.frame_start, scene.frame_end = (int(f) for f in action.frame_range)
         print(f"animation {clip}: frames {tuple(action.frame_range)}")
+
+    if a.anim:
+        scene.render.fps = 30   # glTF stores seconds; keep frames at 30 fps
+        for spec in a.anim:
+            nm, path = spec.split("=", 1)
+            import_animation(nm, path, arm)
+        if arm.animation_data and arm.animation_data.action:
+            arm.animation_data.action.use_fake_user = True
 
     body.data.calc_loop_triangles()
     before = len(body.data.loop_triangles)
@@ -132,7 +178,7 @@ def main():
         apply_scale_options="FBX_SCALE_ALL", axis_forward="-Z", axis_up="Y",
         mesh_smooth_type="OFF", path_mode="STRIP", embed_textures=False,
         add_leaf_bones=False, armature_nodetype="NULL",
-        bake_anim=True, bake_anim_use_all_actions=False, bake_anim_use_nla_strips=False,
+        bake_anim=True, bake_anim_use_all_actions=bool(a.anim), bake_anim_use_nla_strips=False,
         bake_anim_force_startend_keying=True, bake_anim_simplify_factor=0.5)
     print(f"wrote {out_fbx} ({os.path.getsize(out_fbx) / 1e6:.1f} MB)")
 

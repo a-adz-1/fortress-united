@@ -22,10 +22,12 @@ namespace FortressUnited.EditorTools
     {
         const string Root = "Assets/FortressUnited/Art/";
         const string Characters = Root + "Characters/";
+        // Clips that play once rather than loop
+        static readonly HashSet<string> OneShots = new HashSet<string> { "Jump", "Heal", "Death" };
         static readonly string[] TextureSuffixes = { "_BaseColor", "_Normal", "_MetallicSmoothness", "_Emission" };
 
         // Bump to make Unity reimport everything this processes
-        public override uint GetVersion() => 4;
+        public override uint GetVersion() => 5;
         // After URP's own material description preprocessor
         public override int GetPostprocessOrder() => 100;
 
@@ -82,10 +84,10 @@ namespace FortressUnited.EditorTools
             var clips = mi.defaultClipAnimations;
             foreach (var c in clips)
             {
-                // Strip the Blender "Rig|" prefix; loop in place, the game moves the body
+                // Strip the Blender "Rig|" prefixes; loop in place, the game moves the body
                 int bar = c.name.LastIndexOf('|');
                 if (bar >= 0) c.name = c.name.Substring(bar + 1);
-                c.loopTime = true;
+                c.loopTime = !OneShots.Contains(c.name);
                 c.lockRootRotation = true;
                 c.lockRootHeightY = true;
                 c.lockRootPositionXZ = true;

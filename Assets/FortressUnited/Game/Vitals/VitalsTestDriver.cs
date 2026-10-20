@@ -10,6 +10,7 @@ namespace FortressUnited.Game
     ///   1 concussion   2 set on fire   3 infect   4 take 25 damage
     ///   5 heal (clears everything)   6 die / respawn
     ///   7 drop an enemy body ahead, as if hit by a rocket
+    ///   8 dummies do the repair kit push
     ///   9 stand a target dummy ahead (it copies your conc/fire/virus state);
     ///     right click fires a test shot
     /// Concussion is TFC's: strength 100 fading to 0 over 15 seconds (7 for
@@ -25,7 +26,8 @@ namespace FortressUnited.Game
         public Color EnemyColour = new Color(1f, 0.3f, 0.25f);
         [Tooltip("Enemy class model for dummies and bodies (the primitive mannequin if empty).")]
         public GameObject EnemyModel;
-        public AnimationClip EnemyWalk;
+        public readonly System.Collections.Generic.Dictionary<string, AnimationClip> EnemyClips = new System.Collections.Generic.Dictionary<string, AnimationClip>();
+        readonly System.Collections.Generic.List<RobotCharacter> enemies = new System.Collections.Generic.List<RobotCharacter>();
         [Tooltip("Medics shake off concussion in 7 seconds instead of 15.")]
         public bool Medic = true;
 
@@ -75,6 +77,12 @@ namespace FortressUnited.Game
                     DropTestBody();
                 if (kb.digit9Key.wasPressedThisFrame)
                     StandDummy();
+                if (kb.digit8Key.wasPressedThisFrame)
+                {
+                    enemies.RemoveAll(e => e == null);
+                    foreach (var e in enemies)
+                        e.Anim?.Heal();
+                }
                 if (kb.digit6Key.wasPressedThisFrame)
                 {
                     Vitals.Dead = !Vitals.Dead;
@@ -148,8 +156,9 @@ namespace FortressUnited.Game
             if (EnemyModel != null)
             {
                 // A real class model walking back and forth across your view
-                var c = RobotCharacter.Spawn(EnemyModel, feet, yaw + 90, EnemyColour, EnemyWalk);
+                var c = RobotCharacter.Spawn(EnemyModel, feet, yaw + 90, EnemyColour, EnemyClips);
                 c.name = "Target Dummy";
+                enemies.Add(c);
                 var capsule = c.gameObject.AddComponent<CapsuleCollider>();
                 capsule.center = new Vector3(0, 0.9f, 0);
                 capsule.height = 1.8f;
@@ -184,10 +193,9 @@ namespace FortressUnited.Game
             Vector3 kick = flat * Random.Range(3f, 6f) + Vector3.up * Random.Range(3f, 5f) + Random.insideUnitSphere;
             if (EnemyModel != null)
             {
-                var c = RobotCharacter.Spawn(EnemyModel, feet + Vector3.up * 0.02f, yaw, EnemyColour, EnemyWalk);
-                c.Animator.Update(0.3f);   // mid-stride, so bodies don't all start the same
-                c.Stop();
-                Corpse.Create(c.gameObject, c.Bones, kick, Random.Range(120f, 170f), c.ScreenAnchor);
+                // Blown back: the death clip starts, then the ragdoll takes over
+                var c = RobotCharacter.Spawn(EnemyModel, feet + Vector3.up * 0.02f, yaw, EnemyColour, EnemyClips);
+                c.Die(kick, Random.Range(120f, 170f));
                 return;
             }
             var body = Mannequin.Build(feet + Vector3.up * 0.02f, yaw, EnemyColour, out var bones, out var screen);
@@ -209,7 +217,7 @@ namespace FortressUnited.Game
             if (Player == null || !Player.ShowSpeed)
                 return;
             GUI.Label(new Rect(10, Screen.height - 30, 900, 24),
-                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn  7 drop body  9 dummy  RMB shoot   Q/wheel switch  H hide  click swing");
+                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn  7 drop body  8 dummies heal  9 dummy  RMB shoot   Q/wheel switch  H hide  click swing");
         }
     }
 }
