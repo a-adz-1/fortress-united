@@ -46,17 +46,17 @@ world version for other players to see (`p_` models), listed below.
   `Art/Medkit` (30k triangles, 2K textures) with a live vitals screen in the
   greybox; waiting on a first in-editor look
 - [ ] Knife, spy (`v_tfc_knife`)
-- [ ] Shotgun (`v_tfc_shotgun`)
-- [ ] Super shotgun (`v_tfc_12gauge`)
+- [x] Shotgun (`v_tfc_shotgun`): `Art/Weapons/Shotgun` (single blaster), red and blue skins
+- [x] Super shotgun (`v_tfc_12gauge`): `Art/Weapons/SuperShotgun` (dual blaster)
 - [ ] Nailgun (`v_tfc_nailgun`)
-- [ ] Super nailgun (`v_tfc_supernailgun`)
+- [x] Super nailgun (`v_tfc_supernailgun`): `Art/Weapons/SuperNailgun`
 - [ ] Sniper rifle / auto rifle (`v_tfc_sniper`)
-- [ ] Rocket launcher, soldier (`v_tfc_rpg`)
+- [x] Rocket launcher, soldier (`v_tfc_rpg`): `Art/Weapons/RocketLauncher`
 - [ ] Incendiary cannon, pyro (`v_tfc_rpg`, own model in FU)
 - [ ] Flamethrower, pyro (`v_flame`)
 - [ ] Grenade / pipebomb launcher, demoman (`v_tfgl`)
 - [ ] Assault cannon, HWGuy (`v_tfac`)
-- [ ] Railgun, engineer (`v_tfc_railgun`)
+- [x] Railgun, engineer (`v_tfc_railgun`): `Art/Weapons/RailPistol`
 - [ ] Tranquiliser gun, spy (`v_tfc_pistol`)
 - [ ] Umbrella, civilian (`v_umbrella`)
 - [ ] Hand holding a primed grenade (`v_grenade`)
@@ -105,9 +105,10 @@ Simplified versions of the first-person weapons (`p_` models).
   shape, glow mask tinted per team
 - [ ] Napalm grenade (`napalm`)
 - [ ] Gas / hallucination grenade, spy (`spy_grenade`)
-- [ ] EMP grenade (`emp_grenade`)
+- [x] EMP grenade (`emp_grenade`): `Art/Grenades/EmpGrenade` (neutral, no team colour)
 - [ ] Caltrops, scout (`caltrop`)
-- [ ] Pipebomb (`pipebomb`)
+- [x] Pipebomb (`pipebomb`): `Art/Grenades/PipeBomb`, glow per team (bands) and
+  type (window and end caps, green or blue)
 - [ ] Detpack, demoman (`detpack`)
 - [ ] Rocket, also used by the incendiary cannon (`rpgrocket`)
 - [ ] Nail, also used by railgun and tranq darts (`nail`)

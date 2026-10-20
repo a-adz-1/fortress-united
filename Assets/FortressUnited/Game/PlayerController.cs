@@ -28,7 +28,8 @@ namespace FortressUnited.Game
         public bool InvertY;
 
         [Header("View")]
-        public float FieldOfView = 90;
+        [Tooltip("Horizontal field of view for the world, 70-170 (held weapons have their own, see ViewModelCamera).")]
+        [Range(70, 170)] public float FieldOfView = 90;
         public bool ShowSpeed = true;
 
         public BspWorld World;

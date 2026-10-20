@@ -35,6 +35,7 @@ namespace FortressUnited.Game
             vm.Display = display;
             vm.model = Instantiate(prefab, holder.transform).transform;
             vm.Setup();
+            ViewModelCamera.Hold(holder, cam);
             return vm;
         }
 

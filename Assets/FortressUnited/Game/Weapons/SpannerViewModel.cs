@@ -41,6 +41,7 @@ namespace FortressUnited.Game
             vm.model = Instantiate(prefab, vm.pivot).transform;
             vm.Setup();
             vm.Arc = PlasmaArc.Attach(vm.model, arcColor);
+            ViewModelCamera.Hold(holder, cam);
             return vm;
         }
 
