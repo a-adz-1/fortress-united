@@ -108,7 +108,7 @@ Simplified versions of the first-person weapons (`p_` models).
 - [x] EMP grenade (`emp_grenade`): `Art/Grenades/EmpGrenade` (neutral, no team colour)
 - [ ] Caltrops, scout (`caltrop`)
 - [x] Pipebomb (`pipebomb`): `Art/Grenades/PipeBomb`, glow per team (bands) and
-  type (window and end caps, green or blue)
+  type (window and end caps: green det pipes, blue launcher grenades)
 - [ ] Detpack, demoman (`detpack`)
 - [ ] Rocket, also used by the incendiary cannon (`rpgrocket`)
 - [ ] Nail, also used by railgun and tranq darts (`nail`)
