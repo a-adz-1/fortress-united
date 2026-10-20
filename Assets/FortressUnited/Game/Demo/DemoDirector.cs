@@ -29,6 +29,10 @@ namespace FortressUnited.Game
         public GameObject Medic, Sentry1, Sentry2, Sentry3, Conc, Frag, Spanner, Medkit;
         [Tooltip("Record the first-person melee showcase instead of the overview.")]
         public bool MeleeShowcase;
+        [Tooltip("Record stills of the map's main surfaces and water (to compare materials) instead.")]
+        public bool LookTour;
+        [Tooltip("Draw the map with its original textures (for before/after).")]
+        public bool OriginalTextures;
         [Tooltip("Where to stage: \"open\" (the most open outdoor area) or \"spawn\" (a roomy team spawn room).")]
         public string Stage = "open";
         public GameObject Arms, ShockProd, Killswitch;
@@ -71,6 +75,7 @@ namespace FortressUnited.Game
 
             var loader = gameObject.AddComponent<MapLoader>();
             loader.MapPath = MapPath;
+            loader.UseWorldMaterials = !OriginalTextures;
             if (!loader.Load())
             {
                 Debug.LogError("Demo: map didn't load");
@@ -103,7 +108,7 @@ namespace FortressUnited.Game
             readback = new Texture2D(Width, Height, TextureFormat.RGB24, false);
 
             if (Stage == "spawn") FindSpawnStage(); else FindStage();
-            StartCoroutine(MeleeShowcase ? Melee() : Script());
+            StartCoroutine(LookTour ? Tour() : MeleeShowcase ? Melee() : Script());
         }
 
         // ------------------------------------------------------------ staging
@@ -484,6 +489,52 @@ namespace FortressUnited.Game
         /// First person: each melee weapon in turn, held by the medic's arms,
         /// idling then swinging at a single target dummy (no sentries, no kills).
         /// </summary>
+        /// <summary>
+        /// Stills of the map's look: the water, then the biggest surfaces (by area),
+        /// each seen from a few metres out along its normal, drifting slowly.
+        /// The same shots every run, so before/after frames line up.
+        /// </summary>
+        IEnumerator Tour()
+        {
+            var world = GetComponent<MapLoader>().transform.Find("World");
+            var spots = new List<(float area, Vector3 at, Vector3 n, bool water)>();
+            foreach (Transform child in world)
+            {
+                var mf = child.GetComponent<MeshFilter>();
+                if (mf == null) continue;
+                var m = mf.sharedMesh;
+                var v = m.vertices;
+                var nm = m.normals;
+                var t = m.triangles;
+                float total = 0, best = 0;
+                Vector3 at = Vector3.zero, n = Vector3.up;
+                for (int k = 0; k < t.Length; k += 3)
+                {
+                    Vector3 c = Vector3.Cross(v[t[k + 1]] - v[t[k]], v[t[k + 2]] - v[t[k]]);
+                    float a = c.magnitude * 0.5f;
+                    total += a;
+                    if (a > best) { best = a; at = (v[t[k]] + v[t[k + 1]] + v[t[k + 2]]) / 3; n = nm[t[k]]; }
+                }
+                spots.Add((total, child.TransformPoint(at), child.TransformDirection(n).normalized, child.name.StartsWith("!")));
+            }
+            spots.Sort((a, b) => b.area.CompareTo(a.area));
+            var picks = spots.FindAll(s => s.water).GetRange(0, Mathf.Min(1, spots.FindAll(s => s.water).Count));
+            foreach (var s in spots)
+                if (!s.water && picks.Count < 7) picks.Add(s);
+            foreach (var s in picks)
+            {
+                // Water from above and to the side; walls and floors from 4 m out, at head height
+                Vector3 side = Vector3.Cross(s.n, Vector3.up).sqrMagnitude > 0.01f ? Vector3.Cross(s.n, Vector3.up).normalized : Vector3.right;
+                Vector3 from = s.water ? s.at + Vector3.up * 2.2f + side * 4f : s.at + s.n * 4f + Vector3.up * (Mathf.Abs(s.n.y) > 0.7f ? 1.7f : 0.3f) + side * 1.5f;
+                Vector3 at = s.at, f = from;
+                shot = time => (f + side * time * 0.4f, at);
+                shotStart = Time.time;
+                yield return new WaitForSeconds(2f);
+            }
+            shot = null;
+            Quit();
+        }
+
         IEnumerator Melee()
         {
             shot = null;

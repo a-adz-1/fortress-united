@@ -23,6 +23,9 @@ namespace FortressUnited.Game
         [Tooltip("Folders searched for .wad texture files (the map's own folder's parent is added automatically).")]
         public List<string> WadFolders = new List<string>();
 
+        [Tooltip("Swap old textures for the modern material library (WorldMaterials); off shows the originals.")]
+        public bool UseWorldMaterials = true;
+
         public BspFile Bsp { get; private set; }
         public BspWorld World { get; private set; }
 
@@ -195,6 +198,7 @@ namespace FortressUnited.Game
             mesh.SetUVs(0, uvs);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
+            mesh.RecalculateTangents();     // for the materials' normal and detail maps
             return mesh;
         }
 
@@ -233,6 +237,10 @@ namespace FortressUnited.Game
                 mat.color = new Color(0.55f, 0.55f, 0.55f);
             }
             mat.SetFloat("_Smoothness", 0.15f);
+            // Modern material for this texture, if the table and library have one
+            if (UseWorldMaterials)
+                WorldMaterials.Apply(mat, Bsp.Textures[tex].Name, mat.GetTexture("_BaseMap") as Texture2D, mip?.Rgba,
+                    Math.Max(1, Bsp.Textures[tex].Width), Math.Max(1, Bsp.Textures[tex].Height));
             materials[tex] = mat;
             return mat;
         }

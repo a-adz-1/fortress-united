@@ -40,3 +40,7 @@ __pycache__/
 
 # Unity crash dumps
 mono_crash.*
+
+# World materials: downloaded by tools/materials/fetch.py (CC0, ambientCG)
+/Assets/FortressUnited/Resources/WorldMaterials/
+/Assets/FortressUnited/Resources/WorldMaterials.meta

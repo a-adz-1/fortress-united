@@ -45,6 +45,8 @@ namespace FortressUnited.EditorTools
             d.Spanner = Load<GameObject>("Spanner/Spanner_Blue.fbx");
             d.Medkit = Load<GameObject>("Medkit/Medkit_Blue.fbx");
             d.MeleeShowcase = System.Environment.GetEnvironmentVariable("DEMO_MODE") == "melee";
+            d.LookTour = System.Environment.GetEnvironmentVariable("DEMO_MODE") == "look";
+            d.OriginalTextures = System.Environment.GetEnvironmentVariable("DEMO_MATERIALS") == "off";
             d.Stage = System.Environment.GetEnvironmentVariable("DEMO_STAGE") ?? "open";
             d.Arms = Load<GameObject>("Characters/Medic/Medic_Blue_Arms.fbx");
             d.ShockProd = Load<GameObject>("Weapons/ShockProd.fbx");

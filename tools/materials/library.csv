@@ -1,0 +1,47 @@
+id,size_m,use
+Concrete034,2,smooth light concrete
+Concrete031,2,dark worn concrete
+Concrete030,2,concrete
+Concrete042A,2,rough concrete
+Concrete032,2,concrete panels
+Concrete036,2,concrete
+Plaster001,2,plaster
+Plaster002,2,plaster
+PaintedPlaster017,2,painted plaster
+Metal032,1.5,brushed metal
+Metal009,1.5,metal
+Metal046B,1.5,metal
+Metal007,1.5,metal
+Metal011,1.5,metal
+MetalPlates006,2,metal plates
+MetalPlates001,2,metal plates
+MetalPlates013,2,metal plates
+DiamondPlate008C,1,floor plate
+DiamondPlate001,1,floor plate
+PaintedMetal004,1.5,painted metal
+PaintedMetal006,1.5,painted metal
+PaintedMetal016,1.5,painted metal
+Rock035,3,cliff rock
+Rock020,3,rock
+Rock030,3,rock
+Rock029,3,rock
+Rock051,3,rock
+Ground037,2.5,dirt and grass
+Ground054,2.5,sand
+Ground048,2.5,ground
+Gravel023,2,gravel
+Bricks075A,2,bricks
+Bricks060,2,bricks
+Bricks066,2,bricks
+PavingStones070,2.5,paving
+PavingStones128,2.5,paving
+Tiles107,2,tiles
+Tiles040,2,tiles
+Tiles074,2,tiles
+Rust004,1.5,rust
+Snow010A,3,snow
+Asphalt031,3,asphalt
+CorrugatedSteel005,2,corrugated steel
+SheetMetal001,1.5,sheet metal
+Planks021,2,planks
+Wood051,1.5,wood

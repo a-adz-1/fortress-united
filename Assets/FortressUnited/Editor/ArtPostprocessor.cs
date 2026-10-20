@@ -44,6 +44,22 @@ namespace FortressUnited.EditorTools
                 logo.mipmapEnabled = true;
                 return;
             }
+            // World materials (tools/materials/fetch.py): normal maps, and linear masks
+            if (assetPath.StartsWith("Assets/FortressUnited/Resources/WorldMaterials/"))
+            {
+                var wm = (TextureImporter)assetImporter;
+                string wn = Path.GetFileNameWithoutExtension(assetPath);
+                if (wn.EndsWith("_Normal"))
+                    wm.textureType = TextureImporterType.NormalMap;
+                else if (wn.EndsWith("_Mask"))
+                {
+                    wm.sRGBTexture = false;
+                    wm.alphaSource = TextureImporterAlphaSource.FromInput;
+                }
+                wm.anisoLevel = 8;
+                wm.maxTextureSize = 2048;
+                return;
+            }
             if (!assetPath.StartsWith(Root))
                 return;
             var ti = (TextureImporter)assetImporter;
