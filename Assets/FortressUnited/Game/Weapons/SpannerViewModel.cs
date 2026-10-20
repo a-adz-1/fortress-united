@@ -24,6 +24,8 @@ namespace FortressUnited.Game
 
         public PlayerController Player;
         public PlasmaArc Arc { get; private set; }
+        /// <summary>Where the hand holds it (the swing pivots about this point).</summary>
+        public Transform Grip => pivot;
 
         Transform pivot, model;
         float swingT = -1;
@@ -61,8 +63,8 @@ namespace FortressUnited.Game
             var vm = CreateProd(prefab, cam, player, team, teamSkin);
             vm.name = "Killswitch (view model)";
             vm.pivot.localScale = Vector3.one * 1.25f;
-            vm.GripOffset = new Vector3(0.15f, -0.12f, 0.24f);
-            vm.HoldAngles = new Vector3(-25, -25, -30);
+            vm.GripOffset = new Vector3(0.17f, -0.17f, 0.28f);
+            vm.HoldAngles = new Vector3(-40, -22, -30);
             vm.pivot.localPosition = vm.GripOffset;
             vm.pivot.localRotation = Quaternion.Euler(vm.HoldAngles);
             vm.Reach = 1.0f;

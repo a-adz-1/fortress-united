@@ -9,7 +9,7 @@ namespace FortressUnited.EditorTools
     /// <summary>
     /// Records the scripted showcase (Game/Demo/DemoDirector.cs) as frames
     /// for a video. From the command line:
-    ///   DEMO_MAP=/path/to/2fort.bsp DEMO_OUT=/tmp/frames Unity -batchmode
+    ///   DEMO_MAP=/path/to/2fort.bsp DEMO_OUT=/tmp/frames [DEMO_MODE=melee] Unity -batchmode
     ///     -projectPath . -executeMethod FortressUnited.EditorTools.DemoRecorder.Record
     /// then: ffmpeg -framerate 30 -i /tmp/frames/frame_%05d.jpg -c:v libx264 -pix_fmt yuv420p demo.mp4
     /// It enters Play mode and quits Unity when the recording is done.
@@ -44,6 +44,12 @@ namespace FortressUnited.EditorTools
             d.Frag = Load<GameObject>("Grenades/FragGrenade.fbx");
             d.Spanner = Load<GameObject>("Spanner/Spanner_Blue.fbx");
             d.Medkit = Load<GameObject>("Medkit/Medkit_Blue.fbx");
+            d.MeleeShowcase = System.Environment.GetEnvironmentVariable("DEMO_MODE") == "melee";
+            d.Arms = Load<GameObject>("Characters/Medic/Medic_Blue_Arms.fbx");
+            d.ShockProd = Load<GameObject>("Weapons/ShockProd.fbx");
+            d.ShockProdSkin = Load<Texture2D>("Weapons/ShockProd_Blue_BaseColor.png");
+            d.Killswitch = Load<GameObject>("Weapons/Killswitch.fbx");
+            d.KillswitchSkin = Load<Texture2D>("Weapons/Killswitch_Blue_BaseColor.png");
             var clips = new List<AnimationClip>();
             foreach (var o in AssetDatabase.LoadAllAssetsAtPath(Art + "Characters/Medic/Medic_Red.fbx"))
                 if (o is AnimationClip c && !c.name.StartsWith("__preview__"))

@@ -27,7 +27,7 @@ namespace FortressUnited.EditorTools
         static readonly string[] TextureSuffixes = { "_BaseColor", "_Red_BaseColor", "_Normal", "_MetallicSmoothness", "_Emission" };
 
         // Bump to make Unity reimport everything this processes
-        public override uint GetVersion() => 10;
+        public override uint GetVersion() => 11;
         // After URP's own material description preprocessor
         public override int GetPostprocessOrder() => 100;
 
@@ -65,7 +65,7 @@ namespace FortressUnited.EditorTools
             // Declare the textures, so they import first and loading them in
             // OnPostprocessMaterial works (and edits to them reimport the model)
             string dir = Path.GetDirectoryName(assetPath).Replace('\\', '/');
-            string name = Path.GetFileNameWithoutExtension(assetPath);
+            string name = TextureBase(assetPath);
             foreach (var suffix in TextureSuffixes)
             {
                 string tex = $"{dir}/{name}{suffix}.png";
@@ -127,7 +127,7 @@ namespace FortressUnited.EditorTools
         void SetUp(Material material, string materialName)
         {
             string dir = Path.GetDirectoryName(assetPath).Replace('\\', '/');
-            string name = Path.GetFileNameWithoutExtension(assetPath);
+            string name = TextureBase(assetPath);
 
             var lit = Shader.Find("Universal Render Pipeline/Lit");
             if (lit != null && material.shader != lit)
@@ -173,6 +173,14 @@ namespace FortressUnited.EditorTools
                 material.EnableKeyword("_EMISSION");
                 material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             }
+        }
+
+        /// <summary>The name textures are looked up by: the model's, except that
+        /// first-person arms (<Name>_Arms) share the full character's.</summary>
+        static string TextureBase(string path)
+        {
+            string n = Path.GetFileNameWithoutExtension(path);
+            return n.EndsWith("_Arms") ? n.Substring(0, n.Length - 5) : n;
         }
 
         static Texture2D Load(string dir, string name) =>
