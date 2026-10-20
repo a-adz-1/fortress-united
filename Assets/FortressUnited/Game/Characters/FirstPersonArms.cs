@@ -20,6 +20,10 @@ namespace FortressUnited.Game
         public Transform RightTarget, LeftTarget;
         [Tooltip("Where the elbows should point (optional; otherwise down and out).")]
         public Transform RightElbow, LeftElbow;
+        [Tooltip("The fists are a little smaller than the full-size character's.")]
+        public float HandScale = 0.85f;
+        [Tooltip("How far the hand may turn from the forearm's line to follow a handle (degrees).")]
+        public float MaxHandTurn = 50;
 
         Transform cam, head;
         Quaternion rootRest;    // the import's axis-conversion rotation on the model root
@@ -50,6 +54,8 @@ namespace FortressUnited.Game
             arms.head = arms.Find("Head");
             arms.right = arms.MakeArm("Right");
             arms.left = arms.MakeArm("Left");
+            foreach (var a in new[] { arms.right, arms.left })
+                if (a != null) a.Hand.localScale *= arms.HandScale;
             ViewModelCamera.Hold(go, camera);
             return arms;
         }
@@ -112,7 +118,7 @@ namespace FortressUnited.Game
                     // degrees from the forearm's own line, so the wrist never twists
                     // into a knot (past that the fist just holds the handle at an angle)
                     var want = Quaternion.FromToRotation(a.Grip.forward, target.forward) * handRot;
-                    handRot = Quaternion.RotateTowards(handRot, want, 50);
+                    handRot = Quaternion.RotateTowards(handRot, want, MaxHandTurn);
                 }
                 // Where the wrist must be for the grip marker to land on the target
                 Vector3 wristGoal = target.position;

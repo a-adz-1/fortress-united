@@ -21,17 +21,22 @@ namespace FortressUnited.Game
         public VitalsDisplay Display;
         /// <summary>TFC's medkit hold and "use" jab (measured from v_tfc_medkit), frame by frame.</summary>
         public ViewModelMotion Motion = ViewModelMotions.Medkit;
-        /// <summary>The right handle, for the arms to hold; and where the elbow should be.</summary>
+        /// <summary>The kit's own path and the left hand's: TFC's medkit is carried in both hands.</summary>
+        public TwoHandedMotion Both = ViewModelMotions.MedkitBoth;
+        /// <summary>The side handles, for the arms to hold; and where the elbows should be.</summary>
         public Transform Grip { get; private set; }
+        public Transform LeftGrip { get; private set; }
         public Transform ElbowHint { get; private set; }
+        public Transform LeftElbowHint { get; private set; }
+        [Tooltip("Distance between the hands on TFC's medkit (scaled to our view), which the handles are sized to.")]
+        public float HandSpan = 0.356f * 0.6793f;
         /// <summary>A jab connected (heal a teammate, infect an enemy).</summary>
         public System.Action<RaycastHit> OnStrike;
         public float Reach = 1.3f;
         [Tooltip("Lift on top of TFC's hold so the kit's screen shows (TFC's kit is smaller and screenless).")]
-        public Vector3 HoldShift = new Vector3(-0.02f, 0.075f, 0.05f);
+        public Vector3 HoldShift = new Vector3(0, 0.06f, 0.02f);
 
         Transform carry;
-        Vector3 restHand, restDir;
         float idleTime, swingT = -1;
         bool swingHit;
 
@@ -92,14 +97,53 @@ namespace FortressUnited.Game
             basePosition = ScreenOffset - centreInHolder;
             model.localPosition = basePosition;
 
-            // Carry pivot at TFC's resting hand, with the kit's right handle on it
+            // Carry pivot at TFC's resting kit, the kit centred on it and sized so its
+            // side handles sit as far apart as TFC's two hands
             carry = new GameObject("Carry").transform;
             carry.SetParent(transform, false);
-            Motion.Pose(0, -1, out restHand, out restDir, out _);
-            // Bounds in the holder's own axes (x right, y up, z forward from the camera)
+            Vector3 restKit = ViewModelMotion.Sample(Both.IdleKit, 0, true);
+            Bounds b = HolderBounds();
+            float span = b.size.x * 0.88f;
+            if (span > 0.001f)
+            {
+                model.localScale *= HandSpan / span;
+                basePosition = model.localPosition = ScaleAbout(model.localPosition, HandSpan / span);
+                b = HolderBounds();
+            }
+            model.localPosition += restKit - b.center;
+            carry.localPosition = restKit;
+            model.SetParent(carry, true);
+            basePosition = model.localPosition;
+            b = HolderBounds();
+            Transform Handle(string name, float x)
+            {
+                var t = new GameObject(name).transform;
+                t.SetParent(carry, false);
+                t.position = transform.TransformPoint(new Vector3(x, b.center.y, b.center.z));
+                t.localRotation = Quaternion.LookRotation(Vector3.up, Vector3.back);   // handles run up and down
+                return t;
+            }
+            Grip = Handle("Right Grip", b.max.x - b.size.x * 0.11f);
+            LeftGrip = Handle("Left Grip", b.min.x + b.size.x * 0.11f);
+            ElbowHint = new GameObject("Elbow Hint").transform;
+            ElbowHint.SetParent(transform, false);
+            LeftElbowHint = new GameObject("Left Elbow Hint").transform;
+            LeftElbowHint.SetParent(transform, false);
+
+            // The view model shouldn't cast shadows on the world
+            foreach (var r in model.GetComponentsInChildren<Renderer>())
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        static Vector3 ScaleAbout(Vector3 p, float k) => p * k;
+
+        /// <summary>The model's bounds in the holder's own axes (x right, y up, z forward).</summary>
+        Bounds HolderBounds()
+        {
             var b = new Bounds(); bool first = true;
             foreach (var mf in model.GetComponentsInChildren<MeshFilter>())
             {
+                if (mf.name.StartsWith("Screen")) continue;
                 var lb = mf.sharedMesh.bounds;
                 for (int c = 0; c < 8; c++)
                 {
@@ -108,21 +152,7 @@ namespace FortressUnited.Game
                     if (first) { b = new Bounds(p, Vector3.zero); first = false; } else b.Encapsulate(p);
                 }
             }
-            Vector3 handle = new Vector3(b.max.x - b.size.x * 0.06f, b.center.y, b.center.z);
-            basePosition += restHand - handle;
-            model.localPosition = basePosition;
-            carry.localPosition = restHand;
-            model.SetParent(carry, true);
-            basePosition = model.localPosition;
-            Grip = new GameObject("Grip").transform;
-            Grip.SetParent(carry, false);
-            Grip.localRotation = Quaternion.LookRotation(Vector3.up, Vector3.back);   // the handle runs up and down
-            ElbowHint = new GameObject("Elbow Hint").transform;
-            ElbowHint.SetParent(transform, false);
-
-            // The view model shouldn't cast shadows on the world
-            foreach (var r in model.GetComponentsInChildren<Renderer>())
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return b;
         }
 
         static Vector3 Corner(Mesh mesh, float u, float v)
@@ -183,9 +213,13 @@ namespace FortressUnited.Game
                     swingT = -1;
             }
             Motion.Pose(idleTime, swingTime, out var hand, out var dir, out var elbow);
-            carry.localPosition = hand + HoldShift;
-            carry.localRotation = Quaternion.FromToRotation(restDir, dir);
+            bool swinging = swingTime >= 0;
+            float f = swinging ? swingTime * Motion.SwingFps : idleTime * Motion.IdleFps;
+            var kit = ViewModelMotion.Sample(swinging ? Both.SwingKit : Both.IdleKit, f, !swinging);
+            var leftElbow = ViewModelMotion.Sample(swinging ? Both.SwingLeftElbow : Both.IdleLeftElbow, f, !swinging);
+            carry.localPosition = kit + HoldShift;
             ElbowHint.localPosition = elbow + HoldShift;
+            LeftElbowHint.localPosition = leftElbow + HoldShift;
         }
 
         void LateUpdate()
