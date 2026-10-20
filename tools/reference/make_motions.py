@@ -24,6 +24,7 @@ WEAPONS = {
     "Prod": ("v_tfc_crowbar.mdl", "idle1", "attack1"),
     "Spanner": ("v_tfc_spanner.mdl", "idle", "attack1"),
     "Killswitch": ("v_tfc_knife.mdl", "idle", "stab"),
+    "Medkit": ("v_tfc_medkit.mdl", "idle", "shortuse"),
 }
 
 
@@ -63,8 +64,12 @@ def main():
         seqs = {s["label"]: s for s in d["sequences"]}
         iq, sq = seqs[idle], seqs[swing]
         ifr, sfr = frames(iq), frames(sq)
-        # the hit lands where the weapon reaches furthest forward
-        hit = max(range(len(sq["frames"])), key=lambda i: sq["frames"][i]["far"][2])
+        # the hit lands where the weapon reaches furthest forward; the medkit's
+        # use is a sweep in onto the patient, so its hit is the furthest-in point
+        if name == "Medkit":
+            hit = min(range(len(sq["frames"])), key=lambda i: sq["frames"][i]["hand"][0])
+        else:
+            hit = max(range(len(sq["frames"])), key=lambda i: sq["frames"][i]["far"][2])
         def arr(rows, k):
             return ", ".join(vec(r[k]) for r in rows)
         parts.append(f'''        public static readonly ViewModelMotion {name} = new ViewModelMotion

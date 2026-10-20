@@ -120,7 +120,7 @@ namespace FortressUnited.Game
             Material.SetFloat(VirusId, Virus);
             Material.SetFloat(GlitchId, Glitch);
             Material.SetFloat(TeleportId, Teleport);
-            if (Teleport >= 0)
+            if (Teleport >= 0 || Virus > 0)
             {
                 var b = Bounds();
                 Material.SetVector(BodyY, new Vector4(b.min.y, b.max.y, 0, 0));

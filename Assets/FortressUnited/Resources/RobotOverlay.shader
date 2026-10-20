@@ -2,7 +2,7 @@
 // pushed out slightly along the normals (RobotFx.cs drives it):
 // - hits: rings of the team colour running out from each hit point
 // - heat: an orange glow pulsing over the body while overheating
-// - virus: green rows of corrupted data flickering across the body
+// - virus: a green shimmer over the body with a scan line sweeping down it
 // - glitch: team-coloured rows flickering while concussed or powering down
 // - teleport: a bright band sweeping up the body as it beams out
 Shader "FortressUnited/RobotOverlay"
@@ -11,7 +11,7 @@ Shader "FortressUnited/RobotOverlay"
     {
         [HDR] _Color ("Team colour", Color) = (0.17, 1.69, 2.5, 1)
         [HDR] _HeatColor ("Heat colour", Color) = (3, 0.9, 0.2, 1)
-        [HDR] _VirusColor ("Virus colour", Color) = (0.4, 2.5, 0.6, 1)
+        [HDR] _VirusColor ("Virus colour", Color) = (0.45, 2.6, 0.25, 1)
         _Inflate ("Push out along normals (m)", Float) = 0.004
         _RingSpeed ("Ring speed (m/s)", Float) = 2.2
         _RingWidth ("Ring width (m)", Float) = 0.05
@@ -138,13 +138,22 @@ Shader "FortressUnited/RobotOverlay"
                 // Overheating: a slow orange pulse, strongest at the edges
                 float heat = _Heat * (0.15 + rim * 0.9) * (0.75 + 0.25 * sin(t * 6.0));
 
-                // Virus: rows of green corrupted data, with the odd bright block
+                // Virus: the whole body radiates a sickly green shimmer, strongest at
+                // the edges, and every couple of seconds a bright scan line sweeps down
+                // it, lighting up the armour as it passes
                 float virus = 0;
                 if (_Virus > 0)
                 {
-                    float rows = Rows(y, t, 40.0, 10.0, 0.18 * _Virus);
-                    float cols = step(0.5, Hash(floor(input.positionWS.x * 30.0 + input.positionWS.z * 30.0) + floor(t * 10.0)));
-                    virus = _Virus * rows * (0.4 + 0.6 * cols) * 0.7;
+                    float shimmer = 0.55 + 0.25 * sin(t * 7.0 + y * 18.0) + 0.2 * sin(t * 13.0 - y * 31.0);
+                    float radiance = (0.05 + rim * 0.75) * shimmer;
+                    float period = 2.2;
+                    float phase = frac(t / period);
+                    float top = _BodyY.y + 0.1, bottom = _BodyY.x - 0.1;
+                    float lineY = lerp(top, bottom, saturate(phase * 1.35));      // sweeps down, then rests
+                    float d = (y - lineY) / 0.035;
+                    float scan = exp(-d * d) * 2.2;
+                    float wake = exp(-max(0, y - lineY) / 0.12) * step(lineY, y) * 0.5;  // a short glow just above the line
+                    virus = _Virus * (radiance + (scan + wake) * step(phase, 0.74));
                 }
 
                 return half4(_Color.rgb * team + _HeatColor.rgb * heat + _VirusColor.rgb * virus, 1);

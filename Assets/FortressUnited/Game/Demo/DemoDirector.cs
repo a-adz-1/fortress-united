@@ -519,6 +519,27 @@ namespace FortressUnited.Game
                 Destroy(w.gameObject);
                 yield return null;
             }
+
+            // The medkit: its use jab infects an enemy (the robot virus)
+            var vitals = new PlayerVitals { MaxSpeed = 400 };
+            var display = new GameObject("Vitals Display").AddComponent<VitalsDisplay>();
+            display.Vitals = vitals;
+            var kit = MedkitViewModel.Create(Medkit, cam, null, display);
+            kit.Reach = 2.2f;
+            kit.OnStrike = hit =>
+            {
+                var fx = hit.collider.GetComponentInParent<RobotFx>();
+                if (fx == null) return;
+                fx.Hit(hit.point, 10);
+                fx.Virus = 1;
+            };
+            arms.RightTarget = kit.Grip;
+            arms.RightElbow = kit.ElbowHint;
+            yield return new WaitForSeconds(1.0f);
+            kit.Swing();
+            yield return new WaitForSeconds(kit.Motion.SwingSeconds + 0.3f);
+            kit.Swing();
+            yield return new WaitForSeconds(kit.Motion.SwingSeconds + 4.5f);   // watch the infection
             Quit();
         }
 
