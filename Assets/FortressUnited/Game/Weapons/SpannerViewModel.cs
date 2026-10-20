@@ -11,9 +11,9 @@ namespace FortressUnited.Game
     public sealed class SpannerViewModel : MonoBehaviour
     {
         [Tooltip("Where the grip sits, in camera space (metres).")]
-        public Vector3 GripOffset = new Vector3(0.17f, -0.2f, 0.12f);
+        public Vector3 GripOffset = new Vector3(0.16f, -0.2f, 0.34f);
         [Tooltip("Pitch, yaw, roll of the spanner relative to the view.")]
-        public Vector3 HoldAngles = new Vector3(-8, -10, -8);
+        public Vector3 HoldAngles = new Vector3(-35, -85, 0);
         public float Scale = 1;
         public float SwingTime = 0.45f;
         public float BobAmount = 0.01f;

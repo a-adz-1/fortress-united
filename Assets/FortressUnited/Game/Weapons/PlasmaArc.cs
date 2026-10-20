@@ -18,7 +18,7 @@ namespace FortressUnited.Game
         public int Segments = 14;
         [Tooltip("Sideways jitter as a fraction of the bolt's length.")]
         public float Jaggedness = 0.18f;
-        public float CoreWidth = 0.0012f, GlowWidth = 0.006f;
+        public float CoreWidth = 0.003f, GlowWidth = 0.014f;
         public float RedrawInterval = 0.045f;
         public float LightRange = 0.6f, LightIntensity = 0.8f;
 
@@ -27,7 +27,7 @@ namespace FortressUnited.Game
         Light glowLight;
         float nextRedraw;
         float surge;
-        static Material lineMaterial;
+        Material coreMaterial, glowMaterial;
 
         public static PlasmaArc Attach(Transform model, Color color)
         {
@@ -44,18 +44,21 @@ namespace FortressUnited.Game
 
         void Start()
         {
-            if (lineMaterial == null)
-                lineMaterial = new Material(Shader.Find("Sprites/Default")) { name = "PlasmaArc" };
+            // Line colours can't go above 1, so the brightness (HDR, for bloom) is on the materials
+            var shader = Shader.Find("Sprites/Default");
+            coreMaterial = new Material(shader) { name = "PlasmaCore", color = TeamColours.Glow(Color.Lerp(Color, Color.white, 0.55f), 6f) };
+            glowMaterial = new Material(shader) { name = "PlasmaGlow", color = TeamColours.Glow(Color, 3f) };
 
             int maxBolts = Bolts + 3;
             for (int i = 0; i < maxBolts; i++)
             {
-                glows.Add(Line($"Glow {i}", 0));
-                cores.Add(Line($"Core {i}", 1));
+                glows.Add(Line($"Glow {i}", 0, glowMaterial));
+                cores.Add(Line($"Core {i}", 1, coreMaterial));
             }
 
             var lightGo = new GameObject("Plasma Light");
             lightGo.transform.SetParent(transform, false);
+            lightGo.layer = gameObject.layer;
             lightGo.transform.position = Centre();
             glowLight = lightGo.AddComponent<Light>();
             glowLight.type = LightType.Point;
@@ -64,12 +67,13 @@ namespace FortressUnited.Game
             glowLight.shadows = LightShadows.None;
         }
 
-        LineRenderer Line(string name, int order)
+        LineRenderer Line(string name, int order, Material material)
         {
             var go = new GameObject(name);
             go.transform.SetParent(transform, false);
+            go.layer = gameObject.layer;   // drawn by the same camera as the spanner (ViewModelCamera)
             var lr = go.AddComponent<LineRenderer>();
-            lr.sharedMaterial = lineMaterial;
+            lr.sharedMaterial = material;
             lr.useWorldSpace = false;
             lr.positionCount = Segments + 1;
             lr.numCapVertices = 2;
@@ -135,10 +139,8 @@ namespace FortressUnited.Game
                 float w = 1 + surge;
                 cores[i].widthMultiplier = CoreWidth * w / scale;
                 glows[i].widthMultiplier = GlowWidth * w * Random.Range(0.7f, 1.2f) / scale;
-                var white = Color.Lerp(Color, Color.white, 0.75f);
-                cores[i].startColor = cores[i].endColor = white;
-                var glow = Color; glow.a = 0.35f + 0.25f * surge;
-                glows[i].startColor = glows[i].endColor = glow;
+                cores[i].startColor = cores[i].endColor = Color.white;
+                glows[i].startColor = glows[i].endColor = new Color(1, 1, 1, 0.3f + 0.25f * surge);
             }
         }
 
@@ -148,6 +150,12 @@ namespace FortressUnited.Game
                 if (e.name == name)
                     return e;
             return null;
+        }
+
+        void OnDestroy()
+        {
+            if (coreMaterial != null) Destroy(coreMaterial);
+            if (glowMaterial != null) Destroy(glowMaterial);
         }
 
         Vector3[] Bolt(Vector3 from, Vector3 to, float jag)
@@ -160,7 +168,7 @@ namespace FortressUnited.Game
             side.Normalize();
             Vector3 side2 = Vector3.Cross(dir.normalized, side);
             // A bowed path plus jitter that is largest mid-bolt
-            float bow = Random.Range(-1f, 1f) * len * 0.25f;
+            float bow = Random.Range(-1f, 1f) * len * 0.4f;
             float bow2 = Random.Range(-1f, 1f) * len * 0.15f;
             for (int i = 0; i <= Segments; i++)
             {
