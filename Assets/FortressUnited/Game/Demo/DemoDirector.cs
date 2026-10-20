@@ -709,6 +709,7 @@ namespace FortressUnited.Game
                 cam.transform.rotation = cut ? Quaternion.LookRotation(look - pos) : Quaternion.Slerp(cam.transform.rotation, Quaternion.LookRotation(look - pos), 0.25f);
             }
             cam.Render();
+            Probe();
             var prev = RenderTexture.active;
             RenderTexture.active = rt;
             readback.ReadPixels(new Rect(0, 0, Width, Height), 0, 0);
@@ -718,6 +719,25 @@ namespace FortressUnited.Game
         }
 
         bool quitting;
+
+        /// <summary>
+        /// DEMO_PROBE=frame:x:y (screen fractions, y down) logs what the camera sees
+        /// through that pixel on that frame, to track down a visual glitch.
+        /// </summary>
+        void Probe()
+        {
+            var spec = System.Environment.GetEnvironmentVariable("DEMO_PROBE");
+            if (string.IsNullOrEmpty(spec)) return;
+            var p = spec.Split(':');
+            if (p.Length < 3 || int.Parse(p[0]) != frame) return;
+            var c = System.Globalization.CultureInfo.InvariantCulture;
+            var ray = cam.ViewportPointToRay(new Vector3(float.Parse(p[1], c), 1 - float.Parse(p[2], c), 0));
+            var hits = Physics.RaycastAll(ray, 50);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var h in hits)
+                Debug.Log($"Demo probe: {h.distance:0.000} m  {h.collider.name} (parent {h.collider.transform.parent?.name})  normal {h.normal}");
+            Debug.Log($"Demo probe: camera {cam.transform.position} ray {ray.direction}");
+        }
 
         void Quit()
         {

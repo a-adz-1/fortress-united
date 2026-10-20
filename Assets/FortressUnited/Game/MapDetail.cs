@@ -47,8 +47,10 @@ namespace FortressUnited.Game
             root.SetParent(map.transform, false);
             var metalMat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Detail Metal" };
             metalMat.SetColor("_BaseColor", new Color(0.16f, 0.17f, 0.19f));
-            metalMat.SetFloat("_Metallic", 0.55f);
-            metalMat.SetFloat("_Smoothness", 0.62f);
+            // Satin, not polished: thin frame and rail faces caught sharp highlights that
+            // shimmered as the view moved
+            metalMat.SetFloat("_Metallic", 0.35f);
+            metalMat.SetFloat("_Smoothness", 0.38f);
             Emit(root, "Metal", metal, metalMat, true);
             for (int i = 0; i < 5; i++)
             {
@@ -292,13 +294,36 @@ namespace FortressUnited.Game
             int count = 0;
             var entities = map.transform.Find("Entities");
             if (entities == null) return 0;
+            // Doorways: door pieces that touch are one doorway (many maps split a door into
+            // halves that slide apart; framing each half put two frames on top of each other)
+            var doors = new List<Bounds>();
             foreach (Transform e in entities)
             {
                 if (!e.name.StartsWith("func_door")) continue;
                 var renderers = e.GetComponentsInChildren<Renderer>();
                 if (renderers.Length == 0) continue;
-                var b = renderers[0].bounds;
-                foreach (var r in renderers) b.Encapsulate(r.bounds);
+                var db = renderers[0].bounds;
+                foreach (var r in renderers) db.Encapsulate(r.bounds);
+                doors.Add(db);
+            }
+            for (bool merged = true; merged;)
+            {
+                merged = false;
+                for (int i = 0; i < doors.Count && !merged; i++)
+                    for (int j = i + 1; j < doors.Count && !merged; j++)
+                    {
+                        var grown = doors[i];
+                        grown.Expand(0.1f);
+                        if (!grown.Intersects(doors[j])) continue;
+                        var both = doors[i];
+                        both.Encapsulate(doors[j]);
+                        doors[i] = both;
+                        doors.RemoveAt(j);
+                        merged = true;
+                    }
+            }
+            foreach (var b in doors)
+            {
                 Vector3 s = b.size;
                 if (s.y < 1.6f || s.y > 8f) continue;                         // lifts and platforms aren't doorways
                 bool alongX = s.x >= s.z;
@@ -308,6 +333,9 @@ namespace FortressUnited.Game
                 Vector3 through = alongX ? Vector3.forward : Vector3.right;
                 var rot = Quaternion.LookRotation(through, Vector3.up);
                 const float post = 0.22f, proud = 0.06f;
+                // The frame laps over the door's edges, hiding the gap many maps leave between
+                // a door and its opening (light from the room behind shows through it)
+                const float overlap = 0.12f;
                 // How far the wall's faces are from the door's middle on each side: the frame
                 // stands proud of them (flush faces flicker as the two fight to be drawn)
                 float wallFront = thick * 0.5f, wallBack = thick * 0.5f;
@@ -330,30 +358,30 @@ namespace FortressUnited.Game
                 float depth = front + back;
                 Vector3 mid = b.center + through * ((front - back) * 0.5f);
                 var g = GlowAt(b.center);
-                float top = b.max.y + post;                                    // frame top
+                float top = b.max.y + post - overlap;                          // frame top
                 foreach (float sign in new[] { -1f, 1f })
                 {
-                    Vector3 p = mid + across * sign * (width * 0.5f + post * 0.5f);
+                    Vector3 p = mid + across * sign * (width * 0.5f + post * 0.5f - overlap);
                     p.y = b.min.y + (top - b.min.y) * 0.5f;
                     metal.Box(p, rot, new Vector3(post, top - b.min.y, depth));
                     // Glowing inner edge on both faces, running up to meet the top strip
-                    float stripTop = b.max.y + 0.02f;
+                    float stripTop = b.max.y - overlap + 0.02f;
                     foreach (float face in new[] { -1f, 1f })
                     {
                         float faceAt = face > 0 ? front : -back;
-                        Vector3 q = b.center + across * sign * (width * 0.5f + 0.03f) + through * (faceAt + face * 0.012f);
+                        Vector3 q = b.center + across * sign * (width * 0.5f - overlap + 0.03f) + through * (faceAt + face * 0.012f);
                         q.y = b.min.y + (stripTop - b.min.y) * 0.5f;
                         g.Box(q, rot, new Vector3(0.05f, stripTop - b.min.y, 0.02f));
                     }
                 }
-                Vector3 head = mid + Vector3.up * (b.max.y + post * 0.5f - mid.y);
-                metal.Box(head, rot, new Vector3(width + post * 2, post, depth));
+                Vector3 head = mid + Vector3.up * (b.max.y - overlap + post * 0.5f - mid.y);
+                metal.Box(head, rot, new Vector3(width + post * 2 - overlap * 2, post, depth));
                 foreach (float face in new[] { -1f, 1f })
                 {
                     float faceAt = face > 0 ? front : -back;
                     Vector3 q = b.center + through * (faceAt + face * 0.012f);
-                    q.y = b.max.y + 0.03f;
-                    g.Box(q, rot, new Vector3(width + 0.11f, 0.05f, 0.02f));
+                    q.y = b.max.y - overlap + 0.03f;
+                    g.Box(q, rot, new Vector3(width - overlap * 2 + 0.11f, 0.05f, 0.02f));
                 }
                 count++;
             }

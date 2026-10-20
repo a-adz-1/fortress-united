@@ -76,7 +76,7 @@ Shader "FortressUnited/SciFiSurface"
                 weight = saturate(((d2 - d1) / max(d1 + d2, 1) - 0.1) * 30);     // a short, clean change-over between bases
             }
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 faceSize : TEXCOORD1; };
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
@@ -84,6 +84,7 @@ Shader "FortressUnited/SciFiSurface"
                 float3 positionOS : TEXCOORD1;
                 float3 normalOS : TEXCOORD2;
                 half fog : TEXCOORD3;
+                float faceSize : TEXCOORD4;      // the face's narrower width (m), from the map loader
             };
 
             Varyings vert(Attributes v)
@@ -92,6 +93,7 @@ Shader "FortressUnited/SciFiSurface"
                 o.positionWS = TransformObjectToWorld(v.positionOS.xyz);
                 o.positionOS = v.positionOS.xyz;
                 o.normalOS = v.normalOS;
+                o.faceSize = v.faceSize.x;
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.fog = ComputeFogFactor(o.positionCS.z);
                 return o;
@@ -129,6 +131,10 @@ Shader "FortressUnited/SciFiSurface"
                 float2 f = frac(fs);
                 float2 cs = size / split;                    // this panel's size (m)
                 float h2 = hash(id + 7.1), h3 = hash(id + 3.7), h4 = hash(id + 11.3), h5 = hash(id + 5.9);
+                // Narrow faces (window reveals, sills, trims) get a plain finish: features
+                // sized for a wall shrink to flickering dashes on them
+                bool big = i.faceSize > 1.2;
+                if (!big) h2 = 1;                                   // no vents, studs or light strips
 
                 // Distance to the panel's edge (m) and which way the edge is
                 float dx = min(f.x, 1 - f.x) * cs.x, dy = min(f.y, 1 - f.y) * cs.y;
@@ -176,7 +182,7 @@ Shader "FortressUnited/SciFiSurface"
                 // drops below a pixel): a recessed trim belt every fourth row of wall panels and a
                 // raised pilaster every fourth column, both catching the sun on their edges
                 half structOccl = 1;
-                if (kind == 0 && _Metal < 0.5)
+                if (kind == 0 && _Metal < 0.5 && big)
                 {
                     float2 fq = frac(q);
                     float2 m = fq * size;                                   // position in the full panel (m)
@@ -246,7 +252,7 @@ Shader "FortressUnited/SciFiSurface"
                     glow += seamGlow * seamLine * seamStrength;
                 }
                 // Indicator lights: a little row of coloured dots near the corner of some wall panels
-                if (kind == 0 && h5 < 0.07 && cs.x > 0.5)
+                if (kind == 0 && h5 < 0.07 && cs.x > 0.5 && big)
                 {
                     float2 corner = c - float2(cs.x * 0.5 - 0.09, -cs.y * 0.5 + 0.08);
                     float k = floor(corner.x / -0.035);
@@ -274,7 +280,7 @@ Shader "FortressUnited/SciFiSurface"
                 SurfaceData s = (SurfaceData)0;
                 s.albedo = albedo;
                 s.metallic = metal;
-                s.smoothness = smooth * (1 - groove * 0.6) * (1 - bevel * 0.5);   // bevels matte-ish: no sun glints sparkling along seams
+                s.smoothness = smooth * (1 - groove * 0.6) * (1 - bevel * 0.85);  // bevels matte: no glints sparkling along seams
                 albedo *= 1 - groove * 0.35;                      // seams: fine dark lines, not a grid drawn over everything
                 s.albedo = albedo;
                 s.occlusion = occl;

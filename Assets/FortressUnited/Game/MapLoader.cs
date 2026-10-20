@@ -163,6 +163,7 @@ namespace FortressUnited.Game
             var verts = new List<Vector3>();
             var norms = new List<Vector3>();
             var uvs = new List<Vector2>();
+            var sizes = new List<Vector2>();      // each face's narrower width (m), for the surface shader
             var tris = new List<int>();
             var logoBounds = fit ? LogoGroups(faces, w, h) : null;
 
@@ -184,6 +185,20 @@ namespace FortressUnited.Game
                 }
                 if (fit)
                     FitUVs(uvs, first, logoBounds[fi]);
+                // How wide the face is across its narrower direction: small faces (window
+                // reveals, trims, sills) get a plain finish rather than shrunken detail
+                Vector3 axisA = Vector3.Cross(un, Mathf.Abs(un.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+                Vector3 axisB = Vector3.Cross(un, axisA);
+                float minA = float.MaxValue, maxA = float.MinValue, minB = float.MaxValue, maxB = float.MinValue;
+                for (int k = first; k < verts.Count; k++)
+                {
+                    float a = Vector3.Dot(verts[k], axisA), bb = Vector3.Dot(verts[k], axisB);
+                    minA = Mathf.Min(minA, a); maxA = Mathf.Max(maxA, a);
+                    minB = Mathf.Min(minB, bb); maxB = Mathf.Max(maxB, bb);
+                }
+                float narrow = Mathf.Min(maxA - minA, maxB - minB);
+                for (int k = first; k < verts.Count; k++)
+                    sizes.Add(new Vector2(narrow, 0));
                 // Fan triangulation; wind so the front faces the normal in Unity space
                 for (int k = 1; k + 1 < f.Points.Length; k++)
                 {
@@ -205,6 +220,7 @@ namespace FortressUnited.Game
             mesh.SetVertices(verts);
             mesh.SetNormals(norms);
             mesh.SetUVs(0, uvs);
+            mesh.SetUVs(1, sizes);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             mesh.RecalculateTangents();     // for the materials' normal and detail maps
