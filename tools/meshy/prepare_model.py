@@ -5,6 +5,7 @@ Make a Meshy export game-ready for Fortress United (run inside Blender).
         --fbx path/to/meshy_export.fbx --name Medkit_Blue \
         --out Assets/FortressUnited/Art/Medkit --tris 30000 --width 0.42 \
         [--texsize 2048] [--screen 0.19,0.64,0,0.004] [--preview out.png]
+        [--marker Arc_Top:0.232,0,0.020 ...] [--clear-box 0.176,0.235,-0.015,0.018]
 
 What it does:
 - Imports the FBX, joins it into one mesh, centres it and scales it so its
@@ -19,6 +20,11 @@ What it does:
   of the model's width/height, then x and z offsets of the centre (same
   fractions). Each plane has UVs 0-1 the right way up when seen from its own
   side, so the game can draw a live display on it.
+- With --marker NAME:x,y,z (metres, after scaling): adds empty points the
+  game finds by name, e.g. where a plasma arc jumps between.
+- With --clear-box x0,x1,z0,z1: deletes faces lying entirely inside that
+  X/Z box at any depth (repeatable) (e.g. an effect Meshy baked into the mesh that the game draws
+  live instead).
 - Exports <Name>.fbx (metres, Unity axes) and optionally a preview render.
 
 The model is expected to face -Y in Blender (Meshy's default front).
@@ -42,6 +48,8 @@ def parse_args():
     p.add_argument("--texsize", type=int, default=2048)
     p.add_argument("--screen", default="")
     p.add_argument("--preview", default="")
+    p.add_argument("--marker", action="append", default=[])
+    p.add_argument("--clear-box", action="append", default=[])
     return p.parse_args(argv)
 
 
@@ -92,6 +100,21 @@ def pack_metallic_smoothness(metal_path, rough_path, dst, size):
     img.save()
 
 
+def clear_box(body, x0, x1, z0, z1):
+    """Delete faces lying entirely inside the X/Z box (any depth)."""
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    inside = lambda v: x0 <= v.co.x <= x1 and z0 <= v.co.z <= z1
+    doomed = [f for f in bm.faces if all(inside(v) for v in f.verts)]
+    bmesh.ops.delete(bm, geom=doomed, context="FACES")
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context="VERTS")
+    bm.to_mesh(body.data)
+    bm.free()
+    print(f"cleared {len(doomed)} faces inside the box")
+
+
 def add_screen(name, corners, material):
     """A quad from corners in order bottom-left, bottom-right, top-right, top-left (seen from its front)."""
     mesh = bpy.data.meshes.new(name)
@@ -132,6 +155,9 @@ def main():
         v.co = (v.co - centre) * scale
     size = (maxs - mins) * scale
     print(f"size {size.x:.3f} x {size.y:.3f} x {size.z:.3f} m")
+
+    for box in a.clear_box:
+        clear_box(body, *(float(x) for x in box.split(",")))
 
     # Decimate
     body.data.calc_loop_triangles()
@@ -202,6 +228,15 @@ def main():
         # Back is seen from +Y: right is -X
         exported.append(add_screen("Screen_Back", [(x1, yb, z0), (x0, yb, z0), (x0, yb, z1), (x1, yb, z1)], screen_mat))
         print(f"screens {w:.3f} x {h:.3f} m at y {yf:.4f} / {yb:.4f}")
+
+    for m in a.marker:
+        name, xyz = m.split(":")
+        empty = bpy.data.objects.new(name, None)
+        empty.empty_display_size = 0.01
+        empty.location = tuple(float(v) for v in xyz.split(","))
+        bpy.context.scene.collection.objects.link(empty)
+        exported.append(empty)
+        print(f"marker {name} at {tuple(empty.location)}")
 
     bpy.ops.object.select_all(action="DESELECT")
     for o in exported:

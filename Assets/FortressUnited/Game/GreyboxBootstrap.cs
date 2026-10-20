@@ -17,6 +17,8 @@ namespace FortressUnited.Game
         public float MaxSpeed = 400;
         [Tooltip("Medikit view models by team (found by name in the editor if left empty).")]
         public GameObject MedkitBlue, MedkitRed;
+        [Tooltip("Plasma spanner view models by team (found by name in the editor if left empty).")]
+        public GameObject SpannerBlue, SpannerRed;
 
         void Start()
         {
@@ -66,17 +68,28 @@ namespace FortressUnited.Game
             driver.Vitals = vitals;
 
 #if UNITY_EDITOR
-            if (MedkitBlue == null)
-                MedkitBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/FortressUnited/Art/Medkit/Medkit_Blue.fbx");
-            if (MedkitRed == null)
-                MedkitRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/FortressUnited/Art/Medkit/Medkit_Red.fbx");
+            const string art = "Assets/FortressUnited/Art/";
+            if (MedkitBlue == null) MedkitBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Medkit/Medkit_Blue.fbx");
+            if (MedkitRed == null) MedkitRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Medkit/Medkit_Red.fbx");
+            if (SpannerBlue == null) SpannerBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Spanner/Spanner_Blue.fbx");
+            if (SpannerRed == null) SpannerRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Spanner/Spanner_Red.fbx");
 #endif
-            var prefab = Team == 2 ? MedkitRed : MedkitBlue;
+            bool red = Team == 2;
             var cam = player.GetComponentInChildren<Camera>();
-            if (prefab != null && cam != null)
-                driver.Medkit = MedkitViewModel.Create(prefab, cam, player, display).gameObject;
-            else
-                Debug.LogWarning("Fortress United: no medikit model, vitals run without a view model");
+            var slots = player.gameObject.AddComponent<ViewModelSlots>();
+            var spanner = red ? SpannerRed : SpannerBlue;
+            var medkit = red ? MedkitRed : MedkitBlue;
+            if (cam == null)
+                yield break;
+            if (spanner != null)
+            {
+                var arcColor = red ? new Color(1f, 0.35f, 0.25f) : new Color(0.35f, 0.75f, 1f);
+                slots.Add(SpannerViewModel.Create(spanner, cam, player, arcColor).gameObject);
+            }
+            if (medkit != null)
+                slots.Add(MedkitViewModel.Create(medkit, cam, player, display).gameObject);
+            if (slots.Slots.Count == 0)
+                Debug.LogWarning("Fortress United: no view models found under Art/");
         }
     }
 }

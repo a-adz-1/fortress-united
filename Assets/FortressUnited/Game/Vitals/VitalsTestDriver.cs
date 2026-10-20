@@ -8,7 +8,7 @@ namespace FortressUnited.Game
     /// Feeds the greybox player's movement into PlayerVitals and adds test
     /// keys until there are real weapons:
     ///   1 concussion   2 set on fire   3 infect   4 take 25 damage
-    ///   5 heal (clears everything)   6 die / respawn   H show/hide medikit
+    ///   5 heal (clears everything)   6 die / respawn
     /// Concussion wears off over 10 seconds like a TFC conc grenade and
     /// wobbles the view.
     /// </summary>
@@ -16,7 +16,6 @@ namespace FortressUnited.Game
     {
         public PlayerController Player;
         public PlayerVitals Vitals;
-        public GameObject Medkit;
 
         bool wasOnGround;
         float burnUntil;
@@ -64,8 +63,6 @@ namespace FortressUnited.Game
                         concussTime = 0;
                     }
                 }
-                if (kb.hKey.wasPressedThisFrame && Medkit != null)
-                    Medkit.SetActive(!Medkit.activeSelf);
             }
 
             Vitals.Burning = Time.time < burnUntil;
@@ -97,7 +94,7 @@ namespace FortressUnited.Game
             if (Player == null || !Player.ShowSpeed)
                 return;
             GUI.Label(new Rect(10, Screen.height - 30, 900, 24),
-                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn  H medikit");
+                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn   Q/wheel switch  H hide  click swing");
         }
     }
 }
