@@ -21,6 +21,8 @@ namespace FortressUnited.Game
         public GameObject SpannerBlue, SpannerRed;
         [Tooltip("Class models by team, for dummies and bodies (found by name in the editor if left empty).")]
         public GameObject MedicBlue, MedicRed;
+        [Tooltip("Conc grenade model (found by name in the editor if left empty).")]
+        public GameObject ConcGrenadeModel;
         [Tooltip("Sentry levels 1-3 (found by name in the editor if left empty).")]
         public GameObject[] Sentries = new GameObject[3];
         public Texture2D[] SentryBlueSkins = new Texture2D[3], SentryRedSkins = new Texture2D[3];
@@ -82,6 +84,7 @@ namespace FortressUnited.Game
             if (SpannerRed == null) SpannerRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Spanner/Spanner_Red.fbx");
             if (MedicBlue == null) MedicBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Blue.fbx");
             if (MedicRed == null) MedicRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Red.fbx");
+            if (ConcGrenadeModel == null) ConcGrenadeModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Grenades/ConcGrenade.fbx");
             for (int i = 0; i < 3; i++)
             {
                 string sp = art + $"Sentry/Sentry_L{i + 1}";
@@ -99,9 +102,10 @@ namespace FortressUnited.Game
             foreach (var clip in (red ? MedicBlueClips : MedicRedClips) ?? new AnimationClip[0])
                 if (clip != null)
                     driver.EnemyClips[clip.name] = clip;
-            driver.EnemyColour = red ? new Color(0.3f, 0.7f, 1f) : new Color(1f, 0.3f, 0.25f);
-            driver.TeamColour = red ? new Color(1f, 0.3f, 0.25f) : new Color(0.3f, 0.7f, 1f);
+            driver.EnemyColour = TeamColours.For(!red);
+            driver.TeamColour = TeamColours.For(red);
             driver.SentryModels = Sentries;
+            driver.ConcModel = ConcGrenadeModel;
             driver.SentryTeamTextures = red ? SentryRedSkins : SentryBlueSkins;
             var cam = player.GetComponentInChildren<Camera>();
             if (cam != null)
@@ -113,7 +117,7 @@ namespace FortressUnited.Game
                 yield break;
             if (spanner != null)
             {
-                var arcColor = red ? new Color(1f, 0.35f, 0.25f) : new Color(0.35f, 0.75f, 1f);
+                var arcColor = TeamColours.For(red);
                 slots.Add(SpannerViewModel.Create(spanner, cam, player, arcColor).gameObject);
             }
             if (medkit != null)

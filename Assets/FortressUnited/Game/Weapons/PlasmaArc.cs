@@ -13,7 +13,7 @@ namespace FortressUnited.Game
     /// </summary>
     public sealed class PlasmaArc : MonoBehaviour
     {
-        public Color Color = new Color(0.35f, 0.75f, 1f);
+        public Color Color = TeamColours.Blue;
         public int Bolts = 3;
         public int Segments = 14;
         [Tooltip("Sideways jitter as a fraction of the bolt's length.")]

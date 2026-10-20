@@ -16,7 +16,7 @@ namespace FortressUnited.Game
     /// </summary>
     public sealed class RobotFx : MonoBehaviour
     {
-        public Color Colour = new Color(0.3f, 0.7f, 1f);
+        public Color Colour = TeamColours.Blue;
         public float Intensity = 2.5f;
 
         [Range(0, 1)] public float Heat;

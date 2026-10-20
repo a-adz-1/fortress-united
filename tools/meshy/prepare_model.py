@@ -6,7 +6,9 @@ Make a Meshy export game-ready for Fortress United (run inside Blender).
         --out Assets/FortressUnited/Art/Medkit --tris 30000 --width 0.42 \
         [--texsize 2048] [--screen 0.19,0.64,0,0.004] [--preview out.png]
         [--marker Arc_Top:0.232,0,0.020 ...] [--clear-box 0.176,0.235,-0.015,0.018]
+        [--glow red]
 
+--fbx may also be a .glb (Meshy's GLB download), whose textures are inside it.
 What it does:
 - Imports the FBX, joins it into one mesh, centres it and scales it so its
   width (X) is --width metres.
@@ -25,6 +27,9 @@ What it does:
 - With --clear-box x0,x1,z0,z1: deletes faces lying entirely inside that
   X/Z box at any depth (repeatable) (e.g. an effect Meshy baked into the mesh that the game draws
   live instead).
+- With --glow red|blue: the glowing parts Meshy painted in that colour become
+  <Name>_Emission.png (a white mask the game tints per team) and turn dark
+  glass in the base colour, so one model serves both teams.
 - Exports <Name>.fbx (metres, Unity axes) and optionally a preview render.
 
 The model is expected to face -Y in Blender (Meshy's default front).
@@ -50,6 +55,7 @@ def parse_args():
     p.add_argument("--preview", default="")
     p.add_argument("--marker", action="append", default=[])
     p.add_argument("--clear-box", action="append", default=[])
+    p.add_argument("--glow", default="", choices=["", "red", "blue"])
     return p.parse_args(argv)
 
 
@@ -100,6 +106,18 @@ def pack_metallic_smoothness(metal_path, rough_path, dst, size):
     img.save()
 
 
+def weld(obj):
+    """Merges duplicate vertices (UVs stay split per face corner)."""
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    before = len(bm.verts)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bm.to_mesh(obj.data)
+    print(f"welded {before - len(bm.verts)} duplicate vertices")
+    bm.free()
+
+
 def clear_box(body, x0, x1, z0, z1):
     """Delete faces lying entirely inside the X/Z box (any depth)."""
     import bmesh
@@ -113,6 +131,84 @@ def clear_box(body, x0, x1, z0, z1):
     bm.to_mesh(body.data)
     bm.free()
     print(f"cleared {len(doomed)} faces inside the box")
+
+
+def glb_textures(a):
+    """Writes the GLB material's textures under our names; splits out the glow (--glow)."""
+    import numpy as np
+    mat = next(m for m in bpy.data.materials if m.use_nodes and any(n.type == "BSDF_PRINCIPLED" for n in m.node_tree.nodes))
+    base = normal = mr = None
+    for n in mat.node_tree.nodes:
+        if n.type != "TEX_IMAGE" or n.image is None:
+            continue
+        for link in n.outputs["Color"].links:
+            to = link.to_node
+            if to.type == "BSDF_PRINCIPLED" and link.to_socket.name == "Base Color":
+                base = n.image
+            elif to.type == "NORMAL_MAP":
+                normal = n.image
+            elif to.type in ("SEPRGB", "SEPARATE_COLOR", "SEPXYZ"):
+                mr = n.image
+
+    def write(img, suffix, pixels=None):
+        """Saves a new image (img.save() on a GLB's packed image would write the original)."""
+        work = img.copy()
+        if work.size[0] > a.texsize:
+            work.scale(a.texsize, a.texsize)
+        w, h = work.size
+        px = np.array(work.pixels[:], dtype=np.float32).reshape(-1, 4)
+        bpy.data.images.remove(work)
+        if pixels is not None:
+            px = pixels(px)
+        out = bpy.data.images.new(f"{a.name}{suffix}", w, h, alpha=True)
+        out.pixels[:] = px.ravel()
+        out.filepath_raw = os.path.join(a.out, f"{a.name}{suffix}.png")
+        out.file_format = "PNG"
+        out.save()
+        return out
+
+    if base is not None:
+        if a.glow:
+            ch = 0 if a.glow == "red" else 2
+            others = [c for c in range(3) if c != ch]
+            glass = np.array([0.05, 0.055, 0.06], dtype=np.float32)
+
+            def glow_mask(p):
+                mx, mn = p[:, :3].max(axis=1), p[:, :3].min(axis=1)
+                sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+                hue_ok = (p[:, ch] >= mx - 1e-6) & (p[:, others[0]] < p[:, ch] * 0.7) & (p[:, others[1]] < p[:, ch] * 0.7)
+                # Soft: how strongly the pixel is a bright saturated glow colour
+                return np.clip((sat - 0.35) / 0.3, 0, 1) * np.clip((mx - 0.15) / 0.35, 0, 1) * hue_ok
+
+            def neutral(p):
+                # Looser than the glow mask, so dim edges of the painted glow go too
+                mx, mn = p[:, :3].max(axis=1), p[:, :3].min(axis=1)
+                sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+                hue_ok = (p[:, ch] >= mx - 1e-6) & (p[:, others[0]] < p[:, ch] * 0.8) & (p[:, others[1]] < p[:, ch] * 0.8)
+                m = (np.clip((sat - 0.2) / 0.2, 0, 1) * np.clip((mx - 0.06) / 0.15, 0, 1) * hue_ok)[:, None]
+                q = p.copy()
+                q[:, :3] = p[:, :3] * (1 - m) + glass * m
+                return q
+
+            def emission(p):
+                m = glow_mask(p)
+                print(f"glow covers {float((m > 0.5).mean()) * 100:.1f}% of the texture")
+                q = np.ones_like(p)
+                q[:, 0] = q[:, 1] = q[:, 2] = m
+                return q
+            write(base, "_BaseColor", neutral)
+            write(base, "_Emission", emission)
+        else:
+            write(base, "_BaseColor")
+    if normal is not None:
+        write(normal, "_Normal")
+    if mr is not None:
+        def pack(p):
+            q = np.empty_like(p)
+            q[:, 0] = q[:, 1] = q[:, 2] = p[:, 2]   # glTF: B = metallic
+            q[:, 3] = 1 - p[:, 1]                   # G = roughness
+            return q
+        write(mr, "_MetallicSmoothness", pack)
 
 
 def add_screen(name, corners, material):
@@ -132,7 +228,10 @@ def add_screen(name, corners, material):
 def main():
     a = parse_args()
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    bpy.ops.import_scene.fbx(filepath=a.fbx)
+    if a.fbx.lower().endswith((".glb", ".gltf")):
+        bpy.ops.import_scene.gltf(filepath=a.fbx)
+    else:
+        bpy.ops.import_scene.fbx(filepath=a.fbx)
 
     meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
     bpy.ops.object.select_all(action="DESELECT")
@@ -159,6 +258,10 @@ def main():
     for box in a.clear_box:
         clear_box(body, *(float(x) for x in box.split(",")))
 
+    # glTF splits vertices along UV seams; weld them so decimating doesn't open cracks
+    if a.fbx.lower().endswith((".glb", ".gltf")):
+        weld(body)
+
     # Decimate
     body.data.calc_loop_triangles()
     before = len(body.data.loop_triangles)
@@ -184,20 +287,25 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     folder = os.path.dirname(a.fbx)
 
-    # Textures, named for Editor/ArtPostprocessor.cs
-    base = find_texture(folder, "")
-    if base:
-        save_resized(base, os.path.join(a.out, f"{a.name}_BaseColor.png"), a.texsize)
-    normal = find_texture(folder, "_normal")
-    if normal:
-        save_resized(normal, os.path.join(a.out, f"{a.name}_Normal.png"), a.texsize)
-    metal = find_texture(folder, "_metallic")
-    rough = find_texture(folder, "_roughness")
-    if metal or rough:
-        pack_metallic_smoothness(metal, rough, os.path.join(a.out, f"{a.name}_MetallicSmoothness.png"), a.texsize // 2)
-    emission = find_texture(folder, "_emission")
-    if emission:
-        save_resized(emission, os.path.join(a.out, f"{a.name}_Emission.png"), a.texsize)
+    if a.fbx.lower().endswith((".glb", ".gltf")):
+        glb_textures(a)
+        base = None
+    else:
+        # Textures, named for Editor/ArtPostprocessor.cs
+        base = find_texture(folder, "")
+    if not a.fbx.lower().endswith((".glb", ".gltf")):
+        if base:
+            save_resized(base, os.path.join(a.out, f"{a.name}_BaseColor.png"), a.texsize)
+        normal = find_texture(folder, "_normal")
+        if normal:
+            save_resized(normal, os.path.join(a.out, f"{a.name}_Normal.png"), a.texsize)
+        metal = find_texture(folder, "_metallic")
+        rough = find_texture(folder, "_roughness")
+        if metal or rough:
+            pack_metallic_smoothness(metal, rough, os.path.join(a.out, f"{a.name}_MetallicSmoothness.png"), a.texsize // 2)
+        emission = find_texture(folder, "_emission")
+        if emission:
+            save_resized(emission, os.path.join(a.out, f"{a.name}_Emission.png"), a.texsize)
 
     # Material named for the importer; textures are hooked up in Unity
     mat = bpy.data.materials.new(f"{a.name}_Body")

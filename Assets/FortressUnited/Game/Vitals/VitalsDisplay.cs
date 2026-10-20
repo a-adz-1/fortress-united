@@ -24,8 +24,8 @@ namespace FortressUnited.Game
         EcgTrace ecg;
         Image statusBar;
 
-        static readonly Color Teal = new Color(0.35f, 1f, 0.9f);
-        static readonly Color Dim = new Color(0.25f, 0.6f, 0.6f);
+        static readonly Color Teal = Color.Lerp(TeamColours.Blue, TeamColours.BlueCore, 0.5f);
+        static readonly Color Dim = TeamColours.Blue * 0.65f;
         static readonly Color Warn = new Color(1f, 0.55f, 0.2f);
         static readonly Color Alarm = new Color(1f, 0.25f, 0.25f);
 

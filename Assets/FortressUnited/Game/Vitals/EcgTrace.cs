@@ -21,7 +21,7 @@ namespace FortressUnited.Game
 
         static readonly Color32 Background = new Color32(3, 13, 16, 255);
         static readonly Color32 GridColour = new Color32(10, 40, 45, 255);
-        public static readonly Color32 Live = new Color32(90, 255, 220, 255);
+        public static readonly Color32 Live = new Color32(90, 232, 255, 255);   // between TeamColours.Blue and BlueCore
         public static readonly Color32 Flat = new Color32(255, 70, 70, 255);
 
         public EcgTrace(int width, int height)

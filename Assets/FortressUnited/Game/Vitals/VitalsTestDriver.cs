@@ -14,6 +14,8 @@ namespace FortressUnited.Game
     ///   0 build a sentry ahead; again next to it (or hit it with the
     ///     spanner) to upgrade (levels 1-3), then the spanner repairs it
     ///   X detonate your sentry   G throw a test grenade
+    ///   F prime a conc grenade, F again to throw it; hold it and it goes
+    ///     off in your hand (TFC's hand-conc: bunny hop, prime, launch)
     ///   9 stand a target dummy ahead (it copies your conc/fire/virus state);
     ///     right click fires a test shot
     /// Concussion is TFC's: strength 100 fading to 0 over 15 seconds (7 for
@@ -26,7 +28,7 @@ namespace FortressUnited.Game
     {
         public PlayerController Player;
         public PlayerVitals Vitals;
-        public Color EnemyColour = new Color(1f, 0.3f, 0.25f);
+        public Color EnemyColour = TeamColours.Red;
         [Tooltip("Enemy class model for dummies and bodies (the primitive mannequin if empty).")]
         public GameObject EnemyModel;
         public readonly System.Collections.Generic.Dictionary<string, AnimationClip> EnemyClips = new System.Collections.Generic.Dictionary<string, AnimationClip>();
@@ -36,8 +38,12 @@ namespace FortressUnited.Game
         [Tooltip("Sentry levels 1-3 and their team base colours, for the 0 key.")]
         public GameObject[] SentryModels = new GameObject[3];
         public Texture2D[] SentryTeamTextures = new Texture2D[3];
-        public Color TeamColour = new Color(0.3f, 0.7f, 1f);
+        public Color TeamColour = TeamColours.Blue;
         SentryGun sentry;
+        [Tooltip("Conc grenade model (glow tinted per team).")]
+        public GameObject ConcModel;
+        ConcGrenade heldConc;
+        Transform hand;
         [Tooltip("Medics shake off concussion in 7 seconds instead of 15.")]
         public bool Medic = true;
 
@@ -91,6 +97,8 @@ namespace FortressUnited.Game
                     BuildSentry();
                 if (kb.xKey.wasPressedThisFrame && sentry != null)
                     sentry.Explode();
+                if (kb.fKey.wasPressedThisFrame)
+                    ConcKey();
                 if (kb.gKey.wasPressedThisFrame)
                 {
                     var cam = Player.GetComponentInChildren<Camera>();
@@ -192,6 +200,50 @@ namespace FortressUnited.Game
             var dummy = Mannequin.Build(feet, yaw, EnemyColour, out _, out _, colliders: true);
             dummy.name = "Target Dummy";
             dummies.Add(dummy.GetComponent<RobotFx>());
+        }
+
+        void ConcKey()
+        {
+            var cam = Player.GetComponentInChildren<Camera>();
+            if (cam == null)
+                return;
+            if (heldConc != null)
+            {
+                heldConc.Throw(cam.transform.forward, cam.transform.up);
+                heldConc = null;
+                return;
+            }
+            if (hand == null)
+            {
+                hand = new GameObject("Grenade Hand").transform;
+                hand.SetParent(cam.transform, false);
+                hand.localPosition = new Vector3(0.22f, -0.22f, 0.35f);
+            }
+            heldConc = ConcGrenade.Prime(ConcModel, hand, TeamColour, ConcBlast);
+        }
+
+        /// <summary>A conc went off: TFC's push on the player, glitches and shoves for everything else.</summary>
+        void ConcBlast(Vector3 at)
+        {
+            var s = Player.State;
+            Vec3 gren = GoldSrcSpace.FromUnity(at);
+            var push = ConcGrenade.Blast(s.Origin, s.Velocity, gren);
+            if (push.HasValue)
+            {
+                s.Velocity = push.Value;
+                s.OnGround = -1;
+                concStart = Time.time;          // the thrower is concussed too, as in TFC
+                Vitals.OnDamage(5);
+            }
+            float radius = ConcGrenade.BlastRadius * ConcGrenade.Unit;
+            foreach (var col in Physics.OverlapSphere(at, radius))
+            {
+                var fx = col.GetComponentInParent<RobotFx>();
+                if (fx != null && col.GetComponentInParent<SentryGun>() == null)
+                    fx.Hit(col.ClosestPoint(at), 8);
+                if (col.attachedRigidbody != null && !col.attachedRigidbody.isKinematic)
+                    col.attachedRigidbody.AddExplosionForce(8, at, radius, 0.5f, ForceMode.VelocityChange);
+            }
         }
 
         void BuildSentry()
@@ -310,8 +362,11 @@ namespace FortressUnited.Game
         {
             if (Player == null || !Player.ShowSpeed)
                 return;
+            if (heldConc != null)
+                GUI.Label(new Rect(Screen.width / 2 - 60, Screen.height / 2 + 40, 200, 24),
+                    $"CONC  {Mathf.Max(0, heldConc.GoesOffAt - Time.time):0.0}");
             GUI.Label(new Rect(10, Screen.height - 30, 900, 24),
-                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn  7 drop body  8 dummies heal  9 dummy  0 sentry  X det  G grenade  RMB shoot   Q/wheel switch  H hide  click swing");
+                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn  7 drop body  8 dummies heal  9 dummy  0 sentry  X det  G grenade  F conc  RMB shoot   Q/wheel switch  H hide  click swing");
         }
     }
 }

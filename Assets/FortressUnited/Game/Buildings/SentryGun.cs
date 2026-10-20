@@ -28,7 +28,7 @@ namespace FortressUnited.Game
         const int BaseTurnRate = 6;
 
         public int Level { get; private set; } = 1;
-        public Color TeamColour = new Color(0.3f, 0.7f, 1f);
+        public Color TeamColour = TeamColours.Blue;
         public Texture2D TeamBaseColor;
         /// <summary>Things it shoots at (enemy robots), supplied by the game.</summary>
         public static readonly List<Transform> Targets = new List<Transform>();

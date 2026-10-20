@@ -82,19 +82,23 @@ def textures_from_glb(name, out, size):
     paths = {}
 
     def save(img, suffix, transform=None):
-        img = img.copy()
-        if img.size[0] > size:
-            img.scale(size, size)
+        """Saves a new image (img.save() on a GLB's packed image would write the original)."""
+        work = img.copy()
+        if work.size[0] > size:
+            work.scale(size, size)
+        w, h = work.size
+        px = np.array(work.pixels[:], dtype=np.float32).reshape(-1, 4)
+        bpy.data.images.remove(work)
         if transform is not None:
-            px = np.array(img.pixels[:], dtype=np.float32).reshape(-1, 4)
             px = transform(px)
-            img.pixels[:] = px.ravel()
+        out_img = bpy.data.images.new(f"{name}{suffix}", w, h, alpha=True)
+        out_img.pixels[:] = px.ravel()
         path = os.path.join(out, f"{name}{suffix}.png")
-        img.filepath_raw = path
-        img.file_format = "PNG"
-        img.save()
+        out_img.filepath_raw = path
+        out_img.file_format = "PNG"
+        out_img.save()
         paths[suffix] = path
-        return img
+        return out_img
 
     if base:
         save(base, "_Red_BaseColor")
@@ -121,16 +125,16 @@ def red_to_blue(px):
     sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
     reddish = (r == mx) & (sat > 0.35) & (mx > 0.12) & (g < r * 0.75) & (b < r * 0.75)
     out_px = px.copy()
-    # Same brightness and saturation, hue moved to ~210 degrees
+    # Same brightness and saturation, hue moved to the team blue
     v = mx[reddish]
     s = sat[reddish]
-    h = 0.58
+    h = 189 / 360   # TeamColours.Blue
     i = int(h * 6)
     f = h * 6 - i
     p_ = v * (1 - s)
     q = v * (1 - s * f)
     t = v * (1 - s * (1 - f))
-    # h=0.58 -> sector 3: (p, q, v)
+    # h in sector 3: (p, q, v)
     out_px[reddish, 0] = p_
     out_px[reddish, 1] = q
     out_px[reddish, 2] = v
@@ -248,6 +252,16 @@ def main():
     body.data.transform(mathutils.Matrix.Translation((-cx, -cy, -zmin)))
     if cfg["forward"] == "-X":
         body.data.transform(mathutils.Matrix.Rotation(math.radians(90), 4, "Z"))   # -X becomes -Y
+
+    # glTF splits vertices along UV seams; weld them so decimating doesn't open cracks
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    nv = len(bm.verts)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bm.to_mesh(body.data)
+    print(f"welded {nv - len(bm.verts)} duplicate vertices")
+    bm.free()
 
     # Thin it first (3M faces is slow to cut), parts get thinned again after
     decimate(body, a.tris * 8)
@@ -433,4 +447,5 @@ def preview(a, parts):
     bpy.ops.render.render(write_still=True)
 
 
-main()
+if __name__ == "__main__":
+    main()
