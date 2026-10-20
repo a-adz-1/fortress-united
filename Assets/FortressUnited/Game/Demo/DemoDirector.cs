@@ -61,7 +61,7 @@ namespace FortressUnited.Game
         {
             if (type == LogType.Exception || type == LogType.Error)
             {
-                Debug.LogWarning("Demo: stopping after an error");
+                Debug.LogWarning("Demo: stopping after an error: " + message);
                 Quit();
             }
         }

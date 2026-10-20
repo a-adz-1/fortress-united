@@ -73,7 +73,7 @@ Shader "FortressUnited/SciFiSurface"
                 }
                 if (best < 0 || d2 > 1e8) return;
                 team = best;
-                weight = saturate(((d2 - d1) / max(d1 + d2, 1) - 0.1) * 14);     // a short, clean change-over between bases
+                weight = saturate(((d2 - d1) / max(d1 + d2, 1) - 0.1) * 30);     // a short, clean change-over between bases
             }
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
@@ -166,11 +166,42 @@ Shader "FortressUnited/SciFiSurface"
                 if (kind == 0 && row < 0.5 && bandW > 0.01) { albedo = lerp(albedo, bandColour, bandW); smooth = 0.5; }
                 else if (kind == 0 && h3 < 0.06) albedo *= 0.92;      // the odd panel a shade darker
                 // Slight per-panel shade and soft wear
-                albedo *= (0.97 + 0.05 * h5) * (0.97 + 0.04 * noise(p * 1.7));
+                // Panel to panel tone: enough to read as separate plates from across the map
+                albedo *= (0.9 + 0.13 * h5) * (0.97 + 0.04 * noise(p * 1.7));
                 albedo *= _Tone;
 
-                float2 bump = toEdge * bevel * 0.9;                // chamfer leans the normal towards the seam
-                half occl = 1 - groove * 0.5 - bevel * 0.1;
+                float2 bump = toEdge * bevel * 0.5;                // chamfer leans the normal towards the seam
+
+                // Large structure that still reads from across the map (tens of cm, so it never
+                // drops below a pixel): a recessed trim belt every fourth row of wall panels and a
+                // raised pilaster every fourth column, both catching the sun on their edges
+                half structOccl = 1;
+                if (kind == 0 && _Metal < 0.5)
+                {
+                    float2 fq = frac(q);
+                    float2 m = fq * size;                                   // position in the full panel (m)
+                    float edge = max(foot * 1.5, 0.004);                    // anti-aliased edge width
+                    if (fmod(fmod(cell.y, 4) + 4, 4) > 1.5 && fmod(fmod(cell.y, 4) + 4, 4) < 2.5)
+                    {
+                        // Belt: the bottom 30 cm of the panel, recessed and darker, lit along its top lip
+                        float belt = 1 - smoothstep(0.3 - edge, 0.3 + edge, m.y);
+                        float lip = (1 - smoothstep(0, 0.05 + edge, abs(m.y - 0.3))) ;
+                        albedo *= lerp(1, 0.6, belt);
+                        structOccl *= lerp(1, 0.85, belt);
+                        bump += float2(0, 0.7) * lip * (m.y > 0.3 ? -1 : 1) * 0.5;
+                        smooth = lerp(smooth, 0.4, belt);
+                    }
+                    if (fmod(fmod(cell.x, 4) + 4, 4) < 0.5)
+                    {
+                        // Pilaster: a 50 cm column at the panel's left edge, standing proud
+                        float pil = 1 - smoothstep(0.5 - edge, 0.5 + edge, m.x);
+                        float side = 1 - smoothstep(0, 0.05 + edge, abs(m.x - 0.5));
+                        albedo *= lerp(1, 0.78, pil);
+                        bump += float2(0.8, 0) * side;
+                        structOccl *= lerp(1, 0.8, side);
+                    }
+                }
+                half occl = (1 - groove * 0.5 - bevel * 0.1) * structOccl;
                 half3 glow = 0;
                 float2 c = (f - 0.5) * cs;                        // position in the panel from its centre (m)
 
@@ -243,7 +274,7 @@ Shader "FortressUnited/SciFiSurface"
                 SurfaceData s = (SurfaceData)0;
                 s.albedo = albedo;
                 s.metallic = metal;
-                s.smoothness = smooth * (1 - groove * 0.6);
+                s.smoothness = smooth * (1 - groove * 0.6) * (1 - bevel * 0.5);   // bevels matte-ish: no sun glints sparkling along seams
                 albedo *= 1 - groove * 0.35;                      // seams: fine dark lines, not a grid drawn over everything
                 s.albedo = albedo;
                 s.occlusion = occl;

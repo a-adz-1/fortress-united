@@ -307,23 +307,54 @@ namespace FortressUnited.Game
                 Vector3 across = alongX ? Vector3.right : Vector3.forward;
                 Vector3 through = alongX ? Vector3.forward : Vector3.right;
                 var rot = Quaternion.LookRotation(through, Vector3.up);
-                const float post = 0.22f;
-                float depth = thick + 0.3f;
-                var g = GlowAt(b.center);
+                const float post = 0.22f, proud = 0.06f;
+                // How far the wall's faces are from the door's middle on each side: the frame
+                // stands proud of them (flush faces flicker as the two fight to be drawn)
+                float wallFront = thick * 0.5f, wallBack = thick * 0.5f;
                 foreach (float sign in new[] { -1f, 1f })
                 {
-                    Vector3 p = b.center + across * sign * (width * 0.5f + post * 0.5f);
-                    p.y = b.min.y + (s.y + post) * 0.5f;
-                    metal.Box(p, rot, new Vector3(post, s.y + post, depth));
-                    // Glowing inner edge, both faces
-                    foreach (float face in new[] { -1f, 1f })
-                        g.Box(b.center + across * sign * (width * 0.5f + 0.03f) + through * face * (depth * 0.5f + 0.01f) + Vector3.up * (b.min.y + s.y * 0.5f - b.center.y),
-                              rot, new Vector3(0.05f, s.y - 0.1f, 0.02f));
+                    Vector3 probe = b.center + across * sign * (width * 0.5f + post * 0.5f) + Vector3.up * (s.y * 0.2f);
+                    for (int dirSign = -1; dirSign <= 1; dirSign += 2)
+                    {
+                        Vector3 dir = through * dirSign;
+                        // Start outside and look back towards the door's middle for the wall face
+                        if (Physics.Raycast(probe + dir * 1f, -dir, out var hit, 1f))
+                        {
+                            float dist = 1f - hit.distance;
+                            if (dirSign > 0) wallFront = Mathf.Max(wallFront, dist);
+                            else wallBack = Mathf.Max(wallBack, dist);
+                        }
+                    }
                 }
-                Vector3 head = b.center + Vector3.up * (b.max.y + post * 0.5f - b.center.y);
+                float front = wallFront + proud, back = wallBack + proud;
+                float depth = front + back;
+                Vector3 mid = b.center + through * ((front - back) * 0.5f);
+                var g = GlowAt(b.center);
+                float top = b.max.y + post;                                    // frame top
+                foreach (float sign in new[] { -1f, 1f })
+                {
+                    Vector3 p = mid + across * sign * (width * 0.5f + post * 0.5f);
+                    p.y = b.min.y + (top - b.min.y) * 0.5f;
+                    metal.Box(p, rot, new Vector3(post, top - b.min.y, depth));
+                    // Glowing inner edge on both faces, running up to meet the top strip
+                    float stripTop = b.max.y + 0.02f;
+                    foreach (float face in new[] { -1f, 1f })
+                    {
+                        float faceAt = face > 0 ? front : -back;
+                        Vector3 q = b.center + across * sign * (width * 0.5f + 0.03f) + through * (faceAt + face * 0.012f);
+                        q.y = b.min.y + (stripTop - b.min.y) * 0.5f;
+                        g.Box(q, rot, new Vector3(0.05f, stripTop - b.min.y, 0.02f));
+                    }
+                }
+                Vector3 head = mid + Vector3.up * (b.max.y + post * 0.5f - mid.y);
                 metal.Box(head, rot, new Vector3(width + post * 2, post, depth));
                 foreach (float face in new[] { -1f, 1f })
-                    g.Box(head + through * face * (depth * 0.5f + 0.01f) - Vector3.up * (post * 0.5f - 0.03f), rot, new Vector3(width, 0.05f, 0.02f));
+                {
+                    float faceAt = face > 0 ? front : -back;
+                    Vector3 q = b.center + through * (faceAt + face * 0.012f);
+                    q.y = b.max.y + 0.03f;
+                    g.Box(q, rot, new Vector3(width + 0.11f, 0.05f, 0.02f));
+                }
                 count++;
             }
             return count;

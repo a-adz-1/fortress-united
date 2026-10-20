@@ -197,7 +197,7 @@ namespace FortressUnited.Game
             }
             if (best < 0 || second < 0)
                 return (-1, 0);
-            return (best, Mathf.Clamp01(((d2 - d1) / Mathf.Max(d1 + d2, 1) - 0.1f) * 14));
+            return (best, Mathf.Clamp01(((d2 - d1) / Mathf.Max(d1 + d2, 1) - 0.1f) * 30));
         }
 
         /// <summary>Plain (white-ish) lights in a base lean towards its team's colour.</summary>
