@@ -481,81 +481,44 @@ namespace FortressUnited.Game
         }
 
         /// <summary>
-        /// First person on the map: the shock prod zapping a medic, the spanner
-        /// upgrading a sentry, and the killswitch shutting down a medic from behind.
-        /// Every melee weapon is held by the medic's arms.
+        /// First person: each melee weapon in turn, held by the medic's arms,
+        /// idling then swinging at a single target dummy (no sentries, no kills).
         /// </summary>
         IEnumerator Melee()
         {
             shot = null;
-            Vector3 eye = origin + Vector3.up * 1.6f;
-            cam.transform.position = eye;
-            cam.transform.rotation = Quaternion.LookRotation(fwd);
+            cam.transform.position = origin + Vector3.up * 1.6f;
             cam.fieldOfView = Camera.HorizontalToVerticalFieldOfView(100, (float)Width / Height);
             ViewModelCamera.Ensure(cam);
-
-            // Targets: a medic ahead, a sentry to the right, a medic facing away to the left
-            Vector3 medicAt = Floor(origin + fwd * 1.7f);
-            var medic = EnemyMedic(medicAt, Quaternion.LookRotation(-fwd).eulerAngles.y, false);
-            Vector3 sentryAt = Floor(origin + (Quaternion.AngleAxis(55, Vector3.up) * fwd) * 1.9f);
-            sentry = SentryGun.Build(Sentry1, sentryAt, Quaternion.LookRotation(-fwd).eulerAngles.y, TeamColours.Blue, SentryBlueSkin1, 1);
-            sentry.OnHit = OnHit;
             SentryGun.Targets.Clear();
-            Vector3 backAt = Floor(origin + (Quaternion.AngleAxis(-60, Vector3.up) * fwd) * 1.6f);
-            var victim = EnemyMedic(backAt, Quaternion.LookRotation(backAt - origin).eulerAngles.y, false);   // back to the camera
 
+            var dummy = EnemyMedic(Floor(origin + fwd * 1.35f), Quaternion.LookRotation(-fwd).eulerAngles.y, false);
+            health[dummy] = 100000;   // takes hits without dying
+            cam.transform.rotation = Quaternion.LookRotation(dummy.transform.position + Vector3.up * 1.15f - cam.transform.position);
             var arms = FirstPersonArms.Create(Arms, cam);
-            yield return new WaitForSeconds(0.6f);
 
-            // 1. Shock prod at the medic
-            var prod = SpannerViewModel.CreateProd(ShockProd, cam, null, TeamColours.Blue, ShockProdSkin);
-            arms.RightTarget = prod.Grip;
-            prod.Reach = 2.3f;
-            yield return Look(medic.transform.position + Vector3.up * 1.2f, 0.6f);
-            yield return new WaitForSeconds(0.6f);
-            prod.Swing();
-            yield return new WaitForSeconds(0.9f);
-            prod.Swing();
-            yield return new WaitForSeconds(1.2f);
-            Destroy(prod.gameObject);
-
-            // 2. Spanner on the sentry: each hit upgrades it
-            var spanner = SpannerViewModel.Create(Spanner, cam, null, TeamColours.Blue);
-            arms.RightTarget = spanner.Grip;
-            spanner.Reach = 2.5f;
-            int upgrades = 0;
-            SentryGun.OnSpanner = s =>
+            var weapons = new System.Func<SpannerViewModel>[]
             {
-                if (s != sentry || sentry.Level >= 3) return;
-                upgrades++;
-                Upgrade(sentry.Level + 1, sentry.Level == 1 ? SentryBlueSkin2 : SentryBlueSkin3);
+                () => SpannerViewModel.CreateProd(ShockProd, cam, null, TeamColours.Blue, ShockProdSkin),
+                () => SpannerViewModel.Create(Spanner, cam, null, TeamColours.Blue),
+                () => SpannerViewModel.CreateKillswitch(Killswitch, cam, null, TeamColours.Blue, KillswitchSkin),
             };
-            yield return Look(sentryAt + Vector3.up * 0.8f, 0.7f);
-            yield return new WaitForSeconds(0.5f);
-            spanner.Swing();
-            yield return new WaitForSeconds(1.6f);
-            spanner.Swing();
-            yield return new WaitForSeconds(1.8f);
-            SentryGun.OnSpanner = null;
-            Destroy(spanner.gameObject);
-
-            // 3. Killswitch into the back of a medic: it shuts down
-            var spike = SpannerViewModel.CreateKillswitch(Killswitch, cam, null, TeamColours.Blue, KillswitchSkin);
-            arms.RightTarget = spike.Grip;
-            spike.Reach = 2.3f;
-            yield return Look(victim.transform.position + Vector3.up * 1.15f, 0.7f);
-            yield return new WaitForSeconds(0.6f);
-            spike.Swing();
-            yield return new WaitForSeconds(0.25f);
-            // Backstab: the robot glitches and powers down
-            if (victim != null)
+            foreach (var make in weapons)
             {
-                victim.Fx.Glitch = 1;
-                victim.Fx.SparkBurst(40);
-                health.Remove(victim);
-                victim.Die(fwd * 1.2f + Vector3.up * 0.3f, 90);
+                var w = make();
+                w.Reach = 2.2f;
+                arms.RightTarget = w.Grip;
+                arms.RightElbow = w.ElbowHint;
+                yield return new WaitForSeconds(1.0f);       // idle
+                for (int i = 0; i < 3; i++)
+                {
+                    w.Swing();
+                    yield return new WaitForSeconds(w.Motion.SwingSeconds + 0.25f);
+                }
+                yield return new WaitForSeconds(0.4f);
+                Destroy(w.gameObject);
+                yield return null;
             }
-            yield return new WaitForSeconds(3.0f);
             Quit();
         }
 

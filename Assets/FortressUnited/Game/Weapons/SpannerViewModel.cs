@@ -11,6 +11,9 @@ namespace FortressUnited.Game
     /// forward (using the model's Grip and Arc_* markers) and swings on left
     /// click. The spanner keeps a live plasma arc between its jaws that
     /// flares on a swing; the prod only zaps between its prongs on a hit.
+    /// Where it's held and how it swings follow TFC's own first-person
+    /// models (ViewModelMotions, measured from them): the prod moves like
+    /// the crowbar, the spanner like the spanner, the killswitch like the knife.
     /// </summary>
     public sealed class SpannerViewModel : MonoBehaviour
     {
@@ -23,6 +26,15 @@ namespace FortressUnited.Game
         public float BobAmount = 0.01f;
 
         public PlayerController Player;
+        /// <summary>The hold and swing, frame by frame; null falls back to GripOffset / HoldAngles.</summary>
+        public ViewModelMotion Motion;
+        [Tooltip("Turn of the weapon about its own length (degrees), e.g. which way the spanner's jaws face.")]
+        public float Roll;
+        [Tooltip("Shifts on top of the motion, for arms bulkier than TFC's (camera space, metres).")]
+        public Vector3 HandShift, ElbowShift;
+        /// <summary>Where the elbow should be (for the arms' IK), moved with the motion.</summary>
+        public Transform ElbowHint { get; private set; }
+        float idleTime;
         public PlasmaArc Arc { get; private set; }
         /// <summary>Where the hand holds it (the swing pivots about this point).</summary>
         public Transform Grip => pivot;
@@ -40,6 +52,8 @@ namespace FortressUnited.Game
         {
             var vm = Create(prefab, cam, player, team, "Shock Prod (view model)");
             vm.Arc.Bolts = 0;          // only surges show
+            vm.Motion = ViewModelMotions.Prod;
+            vm.Roll = 0;
             vm.pivot.localScale = Vector3.one * 0.8f;   // longer than the spanner, so held a little smaller
             vm.zapOnly = true;
             foreach (var r in vm.model.GetComponentsInChildren<Renderer>())
@@ -68,6 +82,11 @@ namespace FortressUnited.Game
             vm.pivot.localPosition = vm.GripOffset;
             vm.pivot.localRotation = Quaternion.Euler(vm.HoldAngles);
             vm.Reach = 1.0f;
+            vm.Motion = ViewModelMotions.Killswitch;
+            // TFC's knife arm comes in level and close; the medic's forearm is much
+            // bulkier, so it comes up from below instead and the hand sits a little higher
+            vm.HandShift = new Vector3(0.03f, 0.05f, 0.02f);
+            vm.ElbowShift = new Vector3(0.06f, -0.22f, -0.12f);
             // No arc at all; the blade's own glow flares instead
             if (Application.isPlaying) Destroy(vm.Arc); else DestroyImmediate(vm.Arc);
             vm.Arc = null;
@@ -89,6 +108,10 @@ namespace FortressUnited.Game
             vm.pivot = new GameObject("Pivot").transform;
             vm.pivot.SetParent(holder.transform, false);
             vm.model = Instantiate(prefab, vm.pivot).transform;
+            vm.ElbowHint = new GameObject("Elbow Hint").transform;
+            vm.ElbowHint.SetParent(holder.transform, false);
+            vm.Motion = ViewModelMotions.Spanner;
+            vm.Roll = 90;      // jaws side-on to the player, as TFC shows its wrench
             vm.Setup();
             vm.Arc = PlasmaArc.Attach(vm.model, arcColor);
             ViewModelCamera.Hold(holder, cam);
@@ -185,25 +208,6 @@ namespace FortressUnited.Game
         {
             if (Player != null)
                 transform.rotation = Player.ViewModelRotation;
-            // Swing: wind up, chop down and across, recover
-            Quaternion swing = Quaternion.identity;
-            if (swingT >= 0)
-            {
-                swingT += Time.deltaTime / SwingTime;
-                float t = swingT;
-                float pitch, yaw;
-                if (t < 0.2f) { float k = t / 0.2f; pitch = -25 * k; yaw = -10 * k; }
-                else if (t < 0.45f) { float k = (t - 0.2f) / 0.25f; k = k * k; pitch = Mathf.Lerp(-25, 55, k); yaw = Mathf.Lerp(-10, 25, k); }
-                else { float k = Mathf.SmoothStep(0, 1, (t - 0.45f) / 0.55f); pitch = Mathf.Lerp(55, 0, k); yaw = Mathf.Lerp(25, 0, k); }
-                swing = Quaternion.Euler(pitch, yaw, 0);
-                // The blow lands mid-chop
-                if (!swingHit && t >= 0.32f)
-                {
-                    swingHit = true;
-                    Strike();
-                }
-                if (swingT >= 1) swingT = -1;
-            }
 
             float bob = 0, bobSide = 0;
             if (Player != null && Player.State != null)
@@ -216,8 +220,56 @@ namespace FortressUnited.Game
                 bob = Mathf.Sin(bobPhase) * BobAmount * k;
                 bobSide = Mathf.Cos(bobPhase * 0.5f) * BobAmount * 0.6f * k;
             }
+            var sway = new Vector3(bobSide, bob, 0);
 
-            pivot.localPosition = GripOffset + new Vector3(bobSide, bob, 0);
+            if (Motion == null)
+            {
+                OldSwing(sway);
+                return;
+            }
+
+            idleTime += Time.deltaTime;
+            float swingTime = -1;
+            if (swingT >= 0)
+            {
+                swingT += Time.deltaTime;
+                swingTime = swingT;
+                if (!swingHit && swingT >= Motion.HitSeconds)
+                {
+                    swingHit = true;
+                    Strike();
+                }
+                if (swingT >= Motion.SwingSeconds)
+                    swingT = -1;
+            }
+            Motion.Pose(idleTime, swingTime, out var hand, out var dir, out var elbow);
+            pivot.localPosition = hand + HandShift + sway;
+            // Point along the weapon direction; keep "up" towards the top of the screen
+            pivot.localRotation = Quaternion.LookRotation(dir, Vector3.up) * Quaternion.Euler(0, 0, Roll);
+            ElbowHint.localPosition = elbow + ElbowShift + sway;
+        }
+
+        /// <summary>The hand-made hold and chop, for weapons without a motion.</summary>
+        void OldSwing(Vector3 sway)
+        {
+            Quaternion swing = Quaternion.identity;
+            if (swingT >= 0)
+            {
+                swingT += Time.deltaTime / SwingTime;
+                float t = swingT;
+                float pitch, yaw;
+                if (t < 0.2f) { float k = t / 0.2f; pitch = -25 * k; yaw = -10 * k; }
+                else if (t < 0.45f) { float k = (t - 0.2f) / 0.25f; k = k * k; pitch = Mathf.Lerp(-25, 55, k); yaw = Mathf.Lerp(-10, 25, k); }
+                else { float k = Mathf.SmoothStep(0, 1, (t - 0.45f) / 0.55f); pitch = Mathf.Lerp(55, 0, k); yaw = Mathf.Lerp(25, 0, k); }
+                swing = Quaternion.Euler(pitch, yaw, 0);
+                if (!swingHit && t >= 0.32f)
+                {
+                    swingHit = true;
+                    Strike();
+                }
+                if (swingT >= 1) swingT = -1;
+            }
+            pivot.localPosition = GripOffset + sway;
             pivot.localRotation = Quaternion.Euler(HoldAngles) * swing;
         }
     }

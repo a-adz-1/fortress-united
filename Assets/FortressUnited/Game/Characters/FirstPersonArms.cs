@@ -16,8 +16,10 @@ namespace FortressUnited.Game
     public sealed class FirstPersonArms : MonoBehaviour
     {
         [Tooltip("Where the head bone sits relative to the camera (metres).")]
-        public Vector3 HeadOffset = new Vector3(0, 0.06f, -0.07f);
+        public Vector3 HeadOffset = new Vector3(0, -0.1f, -0.16f);
         public Transform RightTarget, LeftTarget;
+        [Tooltip("Where the elbows should point (optional; otherwise down and out).")]
+        public Transform RightElbow, LeftElbow;
 
         Transform cam, head;
         Quaternion rootRest;    // the import's axis-conversion rotation on the model root
@@ -81,8 +83,8 @@ namespace FortressUnited.Game
             transform.rotation = cam.rotation * rootRest;
             transform.position += cam.TransformPoint(HeadOffset) - head.position;
 
-            Solve(right, RightTarget, 1);
-            Solve(left, LeftTarget, -1);
+            Solve(right, RightTarget, RightElbow, 1);
+            Solve(left, LeftTarget, LeftElbow, -1);
         }
 
         /// <summary>
@@ -90,7 +92,7 @@ namespace FortressUnited.Game
         /// axis runs along the target's forward (the handle), and shoulder and
         /// elbow bend (elbow down and out) so the grip marker lands on the target.
         /// </summary>
-        void Solve(Arm a, Transform target, float side)
+        void Solve(Arm a, Transform target, Transform elbowHint, float side)
         {
             if (a == null)
                 return;
@@ -119,19 +121,21 @@ namespace FortressUnited.Game
                     Vector3 local = Quaternion.Inverse(a.Hand.rotation) * (a.Grip.position - a.Hand.position);
                     wristGoal = target.position - handRot * local;
                 }
-                Reach(a, wristGoal, side);
+                Reach(a, wristGoal, elbowHint, side);
                 a.Hand.rotation = handRot;
             }
         }
 
         /// <summary>Two-bone IK: the wrist to a point, the elbow bending down and out.</summary>
-        void Reach(Arm a, Vector3 goal, float side)
+        void Reach(Arm a, Vector3 goal, Transform elbowHint, float side)
         {
             Vector3 shoulder = a.Upper.position;
             Vector3 toGoal = goal - shoulder;
             float d = Mathf.Clamp(toGoal.magnitude, Mathf.Abs(a.LenA - a.LenB) + 0.001f, a.LenA + a.LenB - 0.001f);
             Vector3 n = toGoal.normalized;
-            Vector3 pole = -cam.up * 0.8f + cam.right * side * 0.6f;
+            Vector3 pole = elbowHint != null
+                ? elbowHint.position - (shoulder + goal) * 0.5f
+                : -cam.up * 0.8f + cam.right * side * 0.6f;
             Vector3 bend = Vector3.ProjectOnPlane(pole, n).normalized;
             float cosA = (a.LenA * a.LenA + d * d - a.LenB * a.LenB) / (2 * a.LenA * d);
             float sinA = Mathf.Sqrt(Mathf.Max(0, 1 - cosA * cosA));
