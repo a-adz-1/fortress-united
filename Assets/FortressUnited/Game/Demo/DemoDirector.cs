@@ -528,7 +528,7 @@ namespace FortressUnited.Game
             spots.Sort((a, b) => b.area.CompareTo(a.area));
             var picks = spots.FindAll(s => s.water).GetRange(0, Mathf.Min(1, spots.FindAll(s => s.water).Count));
             foreach (var s in spots)
-                if (!s.water && picks.Count < 5) picks.Add(s);
+                if (!s.water && picks.Count < 1) picks.Add(s);     // the water, and one surface close up
             // A little match on the base screens: blue leads, then takes red's flag and scores
             MatchInfo.Scores[0] = 2; MatchInfo.Scores[1] = 1;
             MatchInfo.TimeLeft = 14 * 60 + 32;

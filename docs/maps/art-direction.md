@@ -23,14 +23,16 @@ dark undersuit, team-colour glow), and the maps match it.
   indoor walls in each base; they show the match live from `MatchInfo`
   (logo, base name, clock, score, flag status, news ticker).
 - Team logos: TFC's team emblem textures become our logos, glowing on a dark panel.
+- Structural detail (`Game/MapDetail.cs`), from the map's own geometry, with no
+  collision: arched ribs with light strips every 3 m along corridors; railings
+  with a glowing lip and rail on floor edges over a drop; frames with glowing
+  inner edges round doors. Glow strips take the team colour in a base.
 
 ## Ideas to add (references: Creepy Cat's 3D Scifi Kit on the Asset Store)
 
-- **Light strips** along floor edges, door frames and ceiling ribs (yellow,
-  cyan, team colour).
 - **More screen content:** class counts, kill feed, sentry status, a map of the base.
-- **Structural detail:** curved ribs or arches along corridors, railings on
-  walkways and ledges, pipes and cable runs, door frames, kick plates.
+- **More structure:** pipes and cable runs, kick plates, frames round open
+  doorways (not just doors), ribs in wider halls.
 - **Signs as holograms:** the old signs redrawn as clean projected panels.
 - **Per-map themes:** dusk (default), night (more glow), snow, desert, space.
 - **Baked lighting and probes** per map for soft bounce light and reflections.
