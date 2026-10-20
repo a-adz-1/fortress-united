@@ -30,10 +30,13 @@ namespace FortressUnited.Tools
                             stock.Add(s.Trim());
                 return Inventory(args[1], args[2], stock);
             }
+            if (args.Length >= 2 && args[0] == "walk")
+                return Walk(args[1], args.Length >= 3 && args[2] == "-v");
             if (args.Length >= 1 && args[0] == "check")
                 return Check(args.Length >= 2 ? args[1] : null);
             Console.Error.WriteLine("usage: MapTools inventory <maps dir> <out dir> [--stock name,name,...]");
             Console.Error.WriteLine("       MapTools check [maps dir]   (reader self-tests, then every .bsp in the dir)");
+            Console.Error.WriteLine("       MapTools walk <map.bsp | maps dir> [-v]   (spawn, run, hop and turn on real map collision)");
             return 1;
         }
 
@@ -296,6 +299,98 @@ namespace FortressUnited.Tools
             }
 
             return failures == 0 ? 0 : 1;
+        }
+
+        /// <summary>
+        /// Plays a scripted run on each map's real collision hulls: spawn,
+        /// settle, run forward, bunny hop, turn. Fails if the player ever ends
+        /// a tick inside solid, never lands, or can't move.
+        /// </summary>
+        static int Walk(string path, bool verbose)
+        {
+            var files = Directory.Exists(path) ? Directory.GetFiles(path, "*.bsp").OrderBy(f => f).ToArray() : new[] { path };
+            int failed = 0;
+            foreach (var file in files)
+            {
+                string name = Path.GetFileNameWithoutExtension(file);
+                var bsp = BspFile.Load(file);
+                var world = new BspWorld(bsp);
+                var spawns = world.SpawnPoints(1);
+                if (spawns.Count == 0)
+                {
+                    Console.WriteLine($"{name,-24} no spawn points");
+                    continue;
+                }
+                var (origin, yaw) = spawns[0];
+                if (verbose)
+                {
+                    var probe = new FortressUnited.Core.Movement.MoveState();
+                    foreach (var sp in spawns)
+                    {
+                        var tr = world.PlayerTrace(probe, sp.Origin, sp.Origin, -1);
+                        string who = tr.Ent > 0 ? bsp.Entities[tr.Ent].ClassName + " " + bsp.Entities[tr.Ent].Get("model") : tr.Ent == 0 ? "world" : "free";
+                        Console.WriteLine($"  spawn {sp.Origin} yaw {sp.Yaw}: {who}");
+                    }
+                }
+                var state = new FortressUnited.Core.Movement.MoveState
+                {
+                    Origin = origin,
+                    ViewOfs = new FortressUnited.Core.Movement.Vec3(0, 0, 28),
+                    MaxSpeed = 400, ClientMaxSpeed = 400,
+                };
+                state.PhysInfo["tfc"] = "1";
+                var vars = new FortressUnited.Core.Movement.MoveVars();
+                var move = new FortressUnited.Core.Movement.PlayerMovement();
+
+                int ticks = 0, solidTicks = 0, groundTicks = 0;
+                float travelled = 0;
+                var last = state.Origin;
+                string problem = null;
+
+                void Run(int count, float fwd, float side, FortressUnited.Core.Movement.Buttons buttons, float dyaw)
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        var cmd = new FortressUnited.Core.Movement.MoveCommand
+                        {
+                            Msec = 10, ViewAngles = new FortressUnited.Core.Movement.Vec3(0, yaw, 0),
+                            ForwardMove = fwd, SideMove = side, Buttons = buttons,
+                        };
+                        move.Move(state, cmd, world, vars);
+                        world.CurrentTime += 0.01;
+                        yaw += dyaw;
+                        ticks++;
+                        if (world.TestPlayerPosition(state, state.Origin) != -1)
+                            solidTicks++;
+                        if (state.OnGround != -1)
+                            groundTicks++;
+                        travelled += (state.Origin - last).Length();
+                        last = state.Origin;
+                        if (verbose && ticks % 50 == 0)
+                            Console.WriteLine($"  t={ticks * 10}ms pos={state.Origin} vel={state.Velocity} ground={state.OnGround} water={state.WaterLevel}");
+                    }
+                }
+
+                var B = FortressUnited.Core.Movement.Buttons.None;
+                var F = FortressUnited.Core.Movement.Buttons.Forward;
+                var J = FortressUnited.Core.Movement.Buttons.Jump;
+                var R = FortressUnited.Core.Movement.Buttons.MoveRight;
+                Run(100, 0, 0, B, 0);               // settle onto the floor
+                bool landed = state.OnGround != -1 || state.WaterLevel >= 2;
+                Run(150, 400, 0, F, 0);             // run forward
+                Run(200, 0, 400, R | J, 1.5f);      // strafe-hop in a circle
+                Run(150, 400, 0, F, -1.2f);         // run, turning
+                Run(100, 0, 0, B, 0);               // stop
+
+                if (solidTicks > 0) problem = $"inside solid on {solidTicks} ticks";
+                else if (!landed) problem = "never landed after spawning";
+                else if (travelled < 200) problem = $"barely moved ({travelled:0} units)";
+
+                Console.WriteLine($"{name,-24} {(problem == null ? "ok  " : "FAIL")} travelled {travelled,6:0} units, on ground {100.0 * groundTicks / ticks,3:0}% of ticks{(problem != null ? " - " + problem : "")}");
+                if (problem != null) failed++;
+            }
+            Console.WriteLine(failed == 0 ? $"all {files.Length} maps ok" : $"{failed} of {files.Length} maps failed");
+            return failed == 0 ? 0 : 1;
         }
 
         static string Csv(string s) => s.Contains(',') || s.Contains('"') ? "\"" + s.Replace("\"", "\"\"") + "\"" : s;

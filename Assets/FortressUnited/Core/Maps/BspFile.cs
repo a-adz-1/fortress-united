@@ -71,7 +71,21 @@ namespace FortressUnited.Core.Maps
         public sealed class Model
         {
             public Vec3 Mins, Maxs, Origin;
+            /// <summary>Root of each collision hull: [0] BSP nodes (point), [1] standing, [2] large, [3] crouched.</summary>
+            public int[] HeadNode = new int[4];
             public int FirstFace, NumFaces;
+        }
+
+        /// <summary>
+        /// A collision hull node: a plane and two children. A negative child
+        /// is a contents value (Contents.Empty, Contents.Solid, Contents.Water...).
+        /// Hull 0 is built from the render BSP nodes with leaves turned into
+        /// their contents; hulls 1-3 are the map's precomputed clip nodes.
+        /// </summary>
+        public struct HullNode
+        {
+            public int Plane;
+            public int Front, Back;
         }
 
         public string EntityText;
@@ -83,6 +97,10 @@ namespace FortressUnited.Core.Maps
         public Face[] Faces;
         public Leaf[] Leaves;
         public Model[] Models;
+        /// <summary>Hull 0 nodes (render nodes, leaves as contents).</summary>
+        public HullNode[] PointNodes;
+        /// <summary>Clip nodes for hulls 1-3.</summary>
+        public HullNode[] ClipNodes;
 
         public static BspFile Load(string path) => Load(File.ReadAllBytes(path));
 
@@ -225,6 +243,8 @@ namespace FortressUnited.Core.Maps
                     Mins = r.Vec(o), Maxs = r.Vec(o + 12), Origin = r.Vec(o + 24),
                     FirstFace = r.Int(o + 56), NumFaces = r.Int(o + 60),
                 };
+                for (int h = 0; h < 4; h++)
+                    m.HeadNode[h] = r.Int(o + 36 + h * 4);
                 bsp.Models[i] = m;
                 for (int k = 0; k < m.NumFaces; k++)
                 {
@@ -234,8 +254,30 @@ namespace FortressUnited.Core.Maps
                 }
             }
 
+            // Render nodes (24 bytes): plane, two children (negative = -(leaf + 1)), bounds, faces
+            o = ofs[(int)Lump.Nodes];
+            bsp.PointNodes = new HullNode[len[(int)Lump.Nodes] / 24];
+            for (int i = 0; i < bsp.PointNodes.Length; i++, o += 24)
+            {
+                int c0 = r.Short(o + 4), c1 = r.Short(o + 6);
+                bsp.PointNodes[i] = new HullNode
+                {
+                    Plane = r.Int(o),
+                    Front = c0 >= 0 ? c0 : bsp.LeafContents(-(c0 + 1)),
+                    Back = c1 >= 0 ? c1 : bsp.LeafContents(-(c1 + 1)),
+                };
+            }
+
+            // Clip nodes (8 bytes): plane, two children (negative = contents)
+            o = ofs[(int)Lump.ClipNodes];
+            bsp.ClipNodes = new HullNode[len[(int)Lump.ClipNodes] / 8];
+            for (int i = 0; i < bsp.ClipNodes.Length; i++, o += 8)
+                bsp.ClipNodes[i] = new HullNode { Plane = r.Int(o), Front = r.Short(o + 4), Back = r.Short(o + 6) };
+
             return bsp;
         }
+
+        int LeafContents(int leaf) => leaf >= 0 && leaf < Leaves.Length ? Leaves[leaf].Contents : Contents.Solid;
 
         /// <summary>Texture name of a face, or "" if it has none.</summary>
         public string FaceTexture(Face f)
