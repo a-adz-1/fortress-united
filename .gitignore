@@ -37,3 +37,6 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+
+# Unity crash dumps
+mono_crash.*
