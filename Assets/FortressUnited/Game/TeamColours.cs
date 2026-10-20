@@ -21,6 +21,37 @@ namespace FortressUnited.Game
         public static readonly Color RedCore = new Color(1f, 156 / 255f, 148 / 255f);
 
         public static Color For(bool red) => red ? Red : Blue;
+        public static Color CoreFor(bool red) => red ? RedCore : BlueCore;
+
+        /// <summary>
+        /// The team's logo: a white shape on transparent, from
+        /// Resources/Teams/Logo_Red.png or Logo_Blue.png (rendered from
+        /// Art/Logos/*.svg). Everything that shows a logo uses this, so
+        /// replacing that one file changes it everywhere.
+        /// </summary>
+        public static Texture2D Logo(bool red) => Resources.Load<Texture2D>(red ? "Teams/Logo_Red" : "Teams/Logo_Blue");
+
+        static Texture2D tintedRed, tintedBlue;
+
+        /// <summary>The logo coloured in the team colour (for decals, which can't tint).</summary>
+        public static Texture2D TintedLogo(bool red)
+        {
+            var cached = red ? tintedRed : tintedBlue;
+            if (cached != null)
+                return cached;
+            var src = Logo(red);
+            if (src == null)
+                return null;
+            var px = src.GetPixels32();
+            var c = (Color32)For(red);
+            for (int i = 0; i < px.Length; i++)
+                px[i] = new Color32(c.r, c.g, c.b, px[i].a);
+            var t = new Texture2D(src.width, src.height, TextureFormat.RGBA32, true) { name = src.name + "_Tinted", wrapMode = TextureWrapMode.Clamp };
+            t.SetPixels32(px);
+            t.Apply(true);
+            if (red) tintedRed = t; else tintedBlue = t;
+            return t;
+        }
 
         /// <summary>
         /// An HDR glow of the colour whose brightest channel is the given

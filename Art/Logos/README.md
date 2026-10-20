@@ -9,7 +9,8 @@ PNG, so changing a logo means replacing one file:
 
 - `team_red.svg`: the red emblem (spear, swept wings, ring), redrawn from the
   red flag concept.
-- `blue_options/`: candidate blue logos (A Aegis, B Crystal, C Trident,
+- `team_blue.svg`: the blue emblem, the trident (option C).
+- `blue_options/`: the candidate blue logos (A Aegis, B Crystal, C Trident,
   D Talon) and `options_sheet.png` comparing them with red.
 
 Models should come from Meshy with logo areas left blank, so the game can

@@ -27,12 +27,23 @@ namespace FortressUnited.EditorTools
         static readonly string[] TextureSuffixes = { "_BaseColor", "_Red_BaseColor", "_Normal", "_MetallicSmoothness", "_Emission" };
 
         // Bump to make Unity reimport everything this processes
-        public override uint GetVersion() => 8;
+        public override uint GetVersion() => 9;
         // After URP's own material description preprocessor
         public override int GetPostprocessOrder() => 100;
 
         void OnPreprocessTexture()
         {
+            // Team logos: readable (decals use a tinted copy), clamped, alpha from the PNG
+            if (assetPath.StartsWith("Assets/FortressUnited/Resources/Teams/"))
+            {
+                var logo = (TextureImporter)assetImporter;
+                logo.isReadable = true;
+                logo.wrapMode = TextureWrapMode.Clamp;
+                logo.alphaSource = TextureImporterAlphaSource.FromInput;
+                logo.alphaIsTransparency = true;
+                logo.mipmapEnabled = true;
+                return;
+            }
             if (!assetPath.StartsWith(Root))
                 return;
             var ti = (TextureImporter)assetImporter;
