@@ -72,4 +72,4 @@ you need when you're ready.
 
 **Sentry guns** (done; for re-rolls): same design per level, plain dark glass on the sensor eye, no text, the gun on a visible side axle and a turntable ring between base and turret, nothing (cables, plates) bridging moving parts.
 
-**Done:** medic, repair kit, plasma spanner, sentries 1-3, conc, frag, MIRV and bomblet, EMP, pipe bomb, shotgun, super shotgun, super nailgun, rocket launcher, rail pistol, shock prod (the melee for everyone without their own, made from: "Futuristic sci-fi electric cattle prod melee weapon, ... no lightning, no sparks, no text, no logos, plain grey background").
+**Done:** medic, repair kit, plasma spanner, sentries 1-3, conc, frag, MIRV and bomblet, EMP, pipe bomb, shotgun, super shotgun, super nailgun, rocket launcher, rail pistol, shock prod, killswitch spike (the melee for everyone without their own, made from: "Futuristic sci-fi electric cattle prod melee weapon, ... no lightning, no sparks, no text, no logos, plain grey background").

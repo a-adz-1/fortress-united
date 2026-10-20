@@ -50,6 +50,24 @@ namespace FortressUnited.Game
             return vm;
         }
 
+        /// <summary>
+        /// The spy's killswitch spike: held like a dagger, pointing forward; its
+        /// glass tip flashes (a short crackle at the tip) when a strike lands,
+        /// e.g. jacking into a robot's back to shut it down.
+        /// </summary>
+        public static SpannerViewModel CreateKillswitch(GameObject prefab, Camera cam, PlayerController player, Color team, Texture2D teamSkin)
+        {
+            var vm = CreateProd(prefab, cam, player, team, teamSkin);
+            vm.name = "Killswitch (view model)";
+            vm.pivot.localScale = Vector3.one * 1.25f;
+            vm.GripOffset = new Vector3(0.15f, -0.12f, 0.24f);
+            vm.HoldAngles = new Vector3(-25, -25, -30);
+            vm.pivot.localPosition = vm.GripOffset;
+            vm.pivot.localRotation = Quaternion.Euler(vm.HoldAngles);
+            vm.Reach = 1.0f;
+            return vm;
+        }
+
         bool zapOnly;
 
         public static SpannerViewModel Create(GameObject prefab, Camera cam, PlayerController player, Color arcColor, string name = "Spanner (view model)")

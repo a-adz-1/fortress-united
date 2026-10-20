@@ -48,7 +48,8 @@ world version for other players to see (`p_` models), listed below.
 - [~] Repair kit (TFC's medikit), medic (`v_tfc_medkit`): blue and red models in
   `Art/Medkit` (30k triangles, 2K textures) with a live vitals screen in the
   greybox; waiting on a first in-editor look
-- [ ] Knife, spy (`v_tfc_knife`)
+- [x] Knife, spy (`v_tfc_knife`): the killswitch hacking spike, `Art/Weapons/Killswitch`,
+  team skins, the tip flashes when a strike lands
 - [x] Shotgun (`v_tfc_shotgun`): `Art/Weapons/Shotgun` (single blaster), red and blue skins
 - [x] Super shotgun (`v_tfc_12gauge`): `Art/Weapons/SuperShotgun` (dual blaster)
 - [ ] Nailgun (`v_tfc_nailgun`)
