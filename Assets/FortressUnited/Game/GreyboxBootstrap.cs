@@ -21,6 +21,9 @@ namespace FortressUnited.Game
         public GameObject SpannerBlue, SpannerRed;
         [Tooltip("Class models by team, for dummies and bodies (found by name in the editor if left empty).")]
         public GameObject MedicBlue, MedicRed;
+        [Tooltip("Sentry levels 1-3 (found by name in the editor if left empty).")]
+        public GameObject[] Sentries = new GameObject[3];
+        public Texture2D[] SentryBlueSkins = new Texture2D[3], SentryRedSkins = new Texture2D[3];
         [Tooltip("Their animation clips (all of a model's clips are found in the editor if left empty).")]
         public AnimationClip[] MedicBlueClips, MedicRedClips;
 
@@ -79,6 +82,13 @@ namespace FortressUnited.Game
             if (SpannerRed == null) SpannerRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Spanner/Spanner_Red.fbx");
             if (MedicBlue == null) MedicBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Blue.fbx");
             if (MedicRed == null) MedicRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Red.fbx");
+            for (int i = 0; i < 3; i++)
+            {
+                string sp = art + $"Sentry/Sentry_L{i + 1}";
+                if (Sentries[i] == null) Sentries[i] = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(sp + ".fbx");
+                if (SentryBlueSkins[i] == null) SentryBlueSkins[i] = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(sp + "_Blue_BaseColor.png");
+                if (SentryRedSkins[i] == null) SentryRedSkins[i] = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(sp + "_Red_BaseColor.png");
+            }
             if (MedicBlueClips == null || MedicBlueClips.Length == 0) MedicBlueClips = Clips(art + "Characters/Medic/Medic_Blue.fbx");
             if (MedicRedClips == null || MedicRedClips.Length == 0) MedicRedClips = Clips(art + "Characters/Medic/Medic_Red.fbx");
 #endif
@@ -90,6 +100,9 @@ namespace FortressUnited.Game
                 if (clip != null)
                     driver.EnemyClips[clip.name] = clip;
             driver.EnemyColour = red ? new Color(0.3f, 0.7f, 1f) : new Color(1f, 0.3f, 0.25f);
+            driver.TeamColour = red ? new Color(1f, 0.3f, 0.25f) : new Color(0.3f, 0.7f, 1f);
+            driver.SentryModels = Sentries;
+            driver.SentryTeamTextures = red ? SentryRedSkins : SentryBlueSkins;
             var cam = player.GetComponentInChildren<Camera>();
             if (cam != null)
                 GreyboxPostFx.Add(cam);

@@ -24,10 +24,10 @@ namespace FortressUnited.EditorTools
         const string Characters = Root + "Characters/";
         // Clips that play once rather than loop
         static readonly HashSet<string> OneShots = new HashSet<string> { "Jump", "Heal", "Death" };
-        static readonly string[] TextureSuffixes = { "_BaseColor", "_Normal", "_MetallicSmoothness", "_Emission" };
+        static readonly string[] TextureSuffixes = { "_BaseColor", "_Red_BaseColor", "_Normal", "_MetallicSmoothness", "_Emission" };
 
         // Bump to make Unity reimport everything this processes
-        public override uint GetVersion() => 5;
+        public override uint GetVersion() => 8;
         // After URP's own material description preprocessor
         public override int GetPostprocessOrder() => 100;
 
@@ -126,7 +126,8 @@ namespace FortressUnited.EditorTools
                 return;
             }
 
-            var baseTex = Load(dir, name + "_BaseColor");
+            // Team-skinned art (sentries) has _Red_ / _Blue_ base colours; red is the default
+            var baseTex = Load(dir, name + "_BaseColor") ?? Load(dir, name + "_Red_BaseColor");
             var normal = Load(dir, name + "_Normal");
             var ms = Load(dir, name + "_MetallicSmoothness");
             var emission = Load(dir, name + "_Emission");

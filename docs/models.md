@@ -85,10 +85,12 @@ Simplified versions of the first-person weapons (`p_` models).
 
 ## Engineer buildings
 
-- [ ] Sentry gun level 1 (`sentry1`)
-- [ ] Sentry gun level 2 (`sentry2`)
-- [ ] Sentry gun level 3, with rockets (`sentry3`)
-- [ ] Sentry base (`base`)
+- [x] Sentry gun level 1 (`sentry1`): `Art/Sentry`, cut into base / turret /
+  gun / barrel / sensor, red and blue skins on one shape
+- [x] Sentry gun level 2 (`sentry2`): twin barrels
+- [x] Sentry gun level 3, with rockets (`sentry3`): gatling pods with
+  spinning barrels, rocket pod
+- [x] Sentry base (`base`): part of each sentry model
 - [ ] Dispenser (`dispenser`)
 - [ ] Teleporter entrance and exit (`teleporter`)
 

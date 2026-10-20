@@ -11,6 +11,7 @@ namespace FortressUnited.Game
     ///   5 heal (clears everything)   6 die / respawn
     ///   7 drop an enemy body ahead, as if hit by a rocket
     ///   8 dummies do the repair kit push
+    ///   0 build a sentry ahead; again next to it to upgrade (levels 1-3)
     ///   9 stand a target dummy ahead (it copies your conc/fire/virus state);
     ///     right click fires a test shot
     /// Concussion is TFC's: strength 100 fading to 0 over 15 seconds (7 for
@@ -28,6 +29,13 @@ namespace FortressUnited.Game
         public GameObject EnemyModel;
         public readonly System.Collections.Generic.Dictionary<string, AnimationClip> EnemyClips = new System.Collections.Generic.Dictionary<string, AnimationClip>();
         readonly System.Collections.Generic.List<RobotCharacter> enemies = new System.Collections.Generic.List<RobotCharacter>();
+        readonly System.Collections.Generic.Dictionary<RobotCharacter, float> enemyHealth = new System.Collections.Generic.Dictionary<RobotCharacter, float>();
+
+        [Tooltip("Sentry levels 1-3 and their team base colours, for the 0 key.")]
+        public GameObject[] SentryModels = new GameObject[3];
+        public Texture2D[] SentryTeamTextures = new Texture2D[3];
+        public Color TeamColour = new Color(0.3f, 0.7f, 1f);
+        SentryGun sentry;
         [Tooltip("Medics shake off concussion in 7 seconds instead of 15.")]
         public bool Medic = true;
 
@@ -77,6 +85,8 @@ namespace FortressUnited.Game
                     DropTestBody();
                 if (kb.digit9Key.wasPressedThisFrame)
                     StandDummy();
+                if (kb.digit0Key.wasPressedThisFrame)
+                    BuildSentry();
                 if (kb.digit8Key.wasPressedThisFrame)
                 {
                     enemies.RemoveAll(e => e == null);
@@ -165,11 +175,62 @@ namespace FortressUnited.Game
                 capsule.radius = 0.28f;
                 c.gameObject.AddComponent<DummyWalker>();
                 dummies.Add(c.Fx);
+                enemyHealth[c] = 150;
+                SentryGun.Targets.Add(c.transform);
                 return;
             }
             var dummy = Mannequin.Build(feet, yaw, EnemyColour, out _, out _, colliders: true);
             dummy.name = "Target Dummy";
             dummies.Add(dummy.GetComponent<RobotFx>());
+        }
+
+        void BuildSentry()
+        {
+            if (!SpotAhead(2.5f, out var feet, out var flat))
+                return;
+            float yaw = Quaternion.LookRotation(flat).eulerAngles.y;
+            int level = 1;
+            if (sentry != null && Vector3.Distance(sentry.transform.position, feet) < 4)
+            {
+                // Upgrade in place, as hitting it with the spanner does
+                level = Mathf.Min(3, sentry.Level + 1);
+                feet = sentry.transform.position;
+                yaw = sentry.transform.eulerAngles.y;
+                Destroy(sentry.gameObject);
+            }
+            var model = SentryModels.Length >= level ? SentryModels[level - 1] : null;
+            if (model == null)
+            {
+                Debug.LogWarning($"Fortress United: no sentry level {level} model");
+                return;
+            }
+            var skin = SentryTeamTextures.Length >= level ? SentryTeamTextures[level - 1] : null;
+            sentry = SentryGun.Build(model, feet, yaw, TeamColour, skin, level);
+            sentry.OnHit = HitSomething;
+        }
+
+        /// <summary>A bullet or blast landed: ripple robots, hurt enemies, push bodies.</summary>
+        void HitSomething(Transform t, Vector3 point, float damage)
+        {
+            var fx = t.GetComponentInParent<RobotFx>();
+            if (fx != null)
+                fx.Hit(point, damage);
+            var rb = t.GetComponentInParent<Rigidbody>();
+            if (rb != null && !rb.isKinematic)
+                rb.AddForceAtPosition((point - sentry.transform.position).normalized * damage * 0.05f, point, ForceMode.VelocityChange);
+            var c = t.GetComponentInParent<RobotCharacter>();
+            if (c != null && enemyHealth.TryGetValue(c, out float hp))
+            {
+                hp -= damage;
+                enemyHealth[c] = hp;
+                if (hp <= 0)
+                {
+                    enemyHealth.Remove(c);
+                    SentryGun.Targets.Remove(c.transform);
+                    Vector3 away = (c.transform.position - sentry.transform.position).normalized;
+                    c.Die(away * 3 + Vector3.up * 2, 160);
+                }
+            }
         }
 
         void TestShot()
@@ -217,7 +278,7 @@ namespace FortressUnited.Game
             if (Player == null || !Player.ShowSpeed)
                 return;
             GUI.Label(new Rect(10, Screen.height - 30, 900, 24),
-                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn  7 drop body  8 dummies heal  9 dummy  RMB shoot   Q/wheel switch  H hide  click swing");
+                $"health {Vitals.Health:0}   1 conc  2 fire  3 infect  4 damage  5 heal  6 die/respawn  7 drop body  8 dummies heal  9 dummy  0 sentry  RMB shoot   Q/wheel switch  H hide  click swing");
         }
     }
 }
