@@ -21,6 +21,9 @@ namespace FortressUnited.Game
         public GameObject SpannerBlue, SpannerRed;
         [Tooltip("Class models by team, for dummies and bodies (found by name in the editor if left empty).")]
         public GameObject MedicBlue, MedicRed;
+        [Tooltip("Shock prod, the all-class melee (found by name in the editor if left empty).")]
+        public GameObject ShockProd;
+        public Texture2D ShockProdBlue, ShockProdRed;
         [Tooltip("Conc grenade model (found by name in the editor if left empty).")]
         public GameObject ConcGrenadeModel, FragGrenadeModel;
         [Tooltip("Sentry levels 1-3 (found by name in the editor if left empty).")]
@@ -84,6 +87,9 @@ namespace FortressUnited.Game
             if (SpannerRed == null) SpannerRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Spanner/Spanner_Red.fbx");
             if (MedicBlue == null) MedicBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Blue.fbx");
             if (MedicRed == null) MedicRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Red.fbx");
+            if (ShockProd == null) ShockProd = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Weapons/ShockProd.fbx");
+            if (ShockProdBlue == null) ShockProdBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(art + "Weapons/ShockProd_Blue_BaseColor.png");
+            if (ShockProdRed == null) ShockProdRed = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(art + "Weapons/ShockProd_Red_BaseColor.png");
             if (FragGrenadeModel == null) FragGrenadeModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Grenades/FragGrenade.fbx");
             if (ConcGrenadeModel == null) ConcGrenadeModel = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Grenades/ConcGrenade.fbx");
             for (int i = 0; i < 3; i++)
@@ -124,6 +130,8 @@ namespace FortressUnited.Game
             }
             if (medkit != null)
                 slots.Add(MedkitViewModel.Create(medkit, cam, player, display).gameObject);
+            if (ShockProd != null)
+                slots.Add(SpannerViewModel.CreateProd(ShockProd, cam, player, TeamColours.For(red), red ? ShockProdRed : ShockProdBlue).gameObject);
             if (slots.Slots.Count == 0)
                 Debug.LogWarning("Fortress United: no view models found under Art/");
         }

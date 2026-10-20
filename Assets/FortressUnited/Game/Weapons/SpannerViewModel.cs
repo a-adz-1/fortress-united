@@ -4,9 +4,11 @@ using UnityEngine.InputSystem;
 namespace FortressUnited.Game
 {
     /// <summary>
-    /// The plasma spanner held in first person: points the jaws forward
-    /// (using the model's Grip and Arc_* markers), runs the live plasma arc,
-    /// and swings on left click with the arc flaring.
+    /// A melee weapon held in first person: the engineer's plasma spanner,
+    /// or the shock prod every other class carries. Points the business end
+    /// forward (using the model's Grip and Arc_* markers) and swings on left
+    /// click. The spanner keeps a live plasma arc between its jaws that
+    /// flares on a swing; the prod only zaps between its prongs on a hit.
     /// </summary>
     public sealed class SpannerViewModel : MonoBehaviour
     {
@@ -29,9 +31,28 @@ namespace FortressUnited.Game
         public float Reach = 1.3f;
         public float Damage = 25;
 
-        public static SpannerViewModel Create(GameObject prefab, Camera cam, PlayerController player, Color arcColor)
+        /// <summary>The shock prod: no idle arc, a zap between the prongs on each hit, team skin and glow.</summary>
+        public static SpannerViewModel CreateProd(GameObject prefab, Camera cam, PlayerController player, Color team, Texture2D teamSkin)
         {
-            var holder = new GameObject("Spanner (view model)");
+            var vm = Create(prefab, cam, player, team, "Shock Prod (view model)");
+            vm.Arc.Bolts = 0;          // only surges show
+            vm.pivot.localScale = Vector3.one * 0.8f;   // longer than the spanner, so held a little smaller
+            vm.zapOnly = true;
+            foreach (var r in vm.model.GetComponentsInChildren<Renderer>())
+                foreach (var m in r.materials)
+                {
+                    if (teamSkin != null) m.SetTexture("_BaseMap", teamSkin);
+                    m.EnableKeyword("_EMISSION");
+                    m.SetColor("_EmissionColor", TeamColours.Glow(team, 1.6f));
+                }
+            return vm;
+        }
+
+        bool zapOnly;
+
+        public static SpannerViewModel Create(GameObject prefab, Camera cam, PlayerController player, Color arcColor, string name = "Spanner (view model)")
+        {
+            var holder = new GameObject(name);
             holder.transform.SetParent(cam.transform, false);
             var vm = holder.AddComponent<SpannerViewModel>();
             vm.Player = player;
@@ -115,7 +136,8 @@ namespace FortressUnited.Game
                 return;
             swingT = 0;
             swingHit = false;
-            Arc?.Surge(1);
+            if (!zapOnly)
+                Arc?.Surge(1);
         }
 
         void LateUpdate()

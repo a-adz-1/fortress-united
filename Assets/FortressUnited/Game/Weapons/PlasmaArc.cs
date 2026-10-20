@@ -46,8 +46,8 @@ namespace FortressUnited.Game
         {
             // Line colours can't go above 1, so the brightness (HDR, for bloom) is on the materials
             var shader = Shader.Find("Sprites/Default");
-            coreMaterial = new Material(shader) { name = "PlasmaCore", color = TeamColours.Glow(Color.Lerp(Color, Color.white, 0.55f), 6f) };
-            glowMaterial = new Material(shader) { name = "PlasmaGlow", color = TeamColours.Glow(Color, 3f) };
+            coreMaterial = new Material(shader) { name = "PlasmaCore", color = TeamColours.Glow(Color.Lerp(Color, Color.white, 0.2f), 3.2f) };
+            glowMaterial = new Material(shader) { name = "PlasmaGlow", color = TeamColours.Glow(Color, 1.8f) };
 
             int maxBolts = Bolts + 3;
             for (int i = 0; i < maxBolts; i++)
