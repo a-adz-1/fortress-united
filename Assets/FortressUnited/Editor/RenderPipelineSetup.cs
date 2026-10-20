@@ -90,6 +90,10 @@ namespace FortressUnited.EditorTools
                 AssetDatabase.CreateAsset(asset, AssetPath);
             }
 
+            // Crisp sun shadows: big map walls cast long edges that look saw-toothed with one coarse cascade
+            asset.shadowDistance = 70;
+            asset.shadowCascadeCount = 4;
+            asset.mainLightShadowmapResolution = 4096;
             AddDecals(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));
             AddAmbientOcclusion(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));
             UseForwardPlus(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));

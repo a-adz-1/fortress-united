@@ -225,12 +225,17 @@ namespace FortressUnited.Game
             var logo = TeamColours.Logo(t);
             if (logo == null)
                 return;
-            mat.SetTexture("_BaseMap", null);
-            mat.SetColor("_BaseColor", new Color(0.02f, 0.025f, 0.035f));
-            mat.SetFloat("_Smoothness", 0.85f);
+            // The logo's own artwork drawn on a dark glossy panel, lit just enough to read
+            // as a screen: a strong glow blooms it into a blob
+            mat.SetTexture("_BaseMap", logo);
+            mat.mainTexture = logo;
+            // The artwork is white: tint it in the team's colour
+            var c = TeamColours.For(t);
+            mat.SetColor("_BaseColor", c * 0.45f);
+            mat.SetFloat("_Smoothness", 0.8f);
             mat.EnableKeyword("_EMISSION");
             mat.SetTexture("_EmissionMap", logo);
-            mat.SetColor("_EmissionColor", TeamColours.Glow(TeamColours.For(t), 2.2f));
+            mat.SetColor("_EmissionColor", c * 0.8f);
             mat.SetTextureScale("_BaseMap", Vector2.one);
             mat.SetTextureOffset("_BaseMap", Vector2.zero);
         }

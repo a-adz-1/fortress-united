@@ -18,7 +18,7 @@ namespace FortressUnited.Game
             var sun = new GameObject("Sun").AddComponent<Light>();
             sun.type = LightType.Directional;
             sun.color = new Color(1f, 0.96f, 0.9f);
-            sun.intensity = 2.4f;
+            sun.intensity = 1.8f;
             sun.shadows = LightShadows.Soft;
             sun.transform.rotation = Quaternion.Euler(32, -40, 0);
 

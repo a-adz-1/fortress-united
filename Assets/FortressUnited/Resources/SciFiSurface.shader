@@ -10,7 +10,7 @@ Shader "FortressUnited/SciFiSurface"
 {
     Properties
     {
-        _WallColor ("Wall", Color) = (0.7, 0.72, 0.76, 1)
+        _WallColor ("Wall", Color) = (0.62, 0.64, 0.68, 1)
         _FloorColor ("Floor", Color) = (0.13, 0.14, 0.155, 1)
         _CeilColor ("Ceiling", Color) = (0.36, 0.38, 0.41, 1)
         _AccentColor ("Accent paint", Color) = (0.16, 0.17, 0.19, 1)
@@ -73,7 +73,7 @@ Shader "FortressUnited/SciFiSurface"
                 }
                 if (best < 0 || d2 > 1e8) return;
                 team = best;
-                weight = saturate(((d2 - d1) / max(d1 + d2, 1) - 0.1) * 5);
+                weight = saturate(((d2 - d1) / max(d1 + d2, 1) - 0.1) * 14);     // a short, clean change-over between bases
             }
 
             struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; };
@@ -135,10 +135,15 @@ Shader "FortressUnited/SciFiSurface"
                 float d = min(dx, dy);
                 float2 toEdge = dx < dy ? float2(f.x < 0.5 ? -1 : 1, 0) : float2(0, f.y < 0.5 ? -1 : 1);
                 float aa = max(fwidth(d), 1e-4);
-                // Fine detail fades out smoothly once it's smaller than a pixel, rather than
-                // being drawn a pixel wide (which crawls and flickers as the view moves)
-                float fade = saturate(2 - aa * 170);             // seams: gone by ~1.2 cm a pixel
-                float fineFade = saturate(2 - aa * 220);         // studs, slats, dots: gone by ~1 cm a pixel
+                // How much surface one pixel covers, in its longer direction: on a floor seen at
+                // a shallow angle a pixel stretches a long way down the view, and detail must fade
+                // by that (fwidth of the edge distance alone misses it along seams and mid-panel)
+                float foot = max(length(ddx(p)), length(ddy(p)));
+                // Fine detail fades out smoothly before it gets smaller than the pixels drawing it,
+                // rather than aliasing (moire, crawling dots, seams breaking into dashes)
+                float fade = saturate(2 - foot / 0.006);         // 6 mm seams: gone by 12 mm a pixel
+                float fineFade = saturate(2 - foot * 8 / 0.06);  // 6 cm slats: gone by 15 mm a pixel
+                float studFade = saturate(2 - foot * 16 / 0.08); // 8 cm stud grid: gone by 1 cm a pixel
                 const float gw = 0.006;
                 float groove = (1 - smoothstep(gw - aa * 1.5, gw + aa * 1.5, d)) * fade;     // a 3-pixel soft edge, so seams don't step
                 float bevel = (1 - smoothstep(0.006, 0.022, d)) * (1 - groove) * fade;
@@ -183,11 +188,12 @@ Shader "FortressUnited/SciFiSurface"
                 else if (kind == 1 && h2 < 0.2)
                 {
                     // Grip plating: a grid of small raised studs
-                    float2 g = frac(c / 0.05) - 0.5;
+                    float2 g = frac(c / 0.08) - 0.5;
                     float r = length(g);
-                    float stud = 1 - smoothstep(0.18, 0.28, r);
-                    bump += g * stud * 2.0 * fineFade;
-                    albedo *= 1 + 0.25 * lerp(0.3, stud, fineFade);
+                    float stud = 1 - smoothstep(0.16, 0.26, r);
+                    bump += g * stud * 2.0 * studFade;
+                    albedo *= 1 + 0.25 * lerp(0.2, stud, studFade);      // far off: the studs' average shade
+                    smooth = 0.3;                                        // matte grip: no sparkling glints off tiny studs
                 }
                 else if (kind == 2 && h2 < _LightStrips)
                 {
@@ -218,7 +224,7 @@ Shader "FortressUnited/SciFiSurface"
                     float pick = hash(id + k * 1.7);
                     half3 dc = pick < 0.4 ? half3(3.0, 0.9, 0.15) : (pick < 0.7 ? half3(0.3, 3.0, 0.6) : half3(3.0, 0.25, 0.2));
                     float pulse = 0.55 + 0.45 * sin(_Time.y * (1.2 + pick * 2) + pick * 20);     // a slow, soft pulse
-                    glow += dc * dot_ * pulse * fineFade;
+                    glow += dc * dot_ * pulse * saturate(2 - foot * 8 / 0.035);
                 }
                 float3 nOS = normalize(n + (tu * bump.x + tv * bump.y));
                 float3 normalWS = normalize(TransformObjectToWorldNormal(nOS));

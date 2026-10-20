@@ -61,6 +61,7 @@ namespace FortressUnited.Game
             }
 
             Bsp = BspFile.Load(path);
+            TJunctions.Fix(Bsp);       // close the hairline cracks between polygons
             World = new BspWorld(Bsp);
 
             var folders = new List<string>(WadFolders);
@@ -163,9 +164,11 @@ namespace FortressUnited.Game
             var norms = new List<Vector3>();
             var uvs = new List<Vector2>();
             var tris = new List<int>();
+            var logoBounds = fit ? LogoGroups(faces, w, h) : null;
 
-            foreach (var f in faces)
+            for (int fi = 0; fi < faces.Count; fi++)
             {
+                var f = faces[fi];
                 var ti = Bsp.TexInfos[f.TexInfo];
                 var plane = Bsp.Planes[f.Plane];
                 Vec3 n = f.BackSide ? -plane.Normal : plane.Normal;
@@ -180,7 +183,7 @@ namespace FortressUnited.Game
                     uvs.Add(new Vector2(u, v));
                 }
                 if (fit)
-                    FitUVs(uvs, first);
+                    FitUVs(uvs, first, logoBounds[fi]);
                 // Fan triangulation; wind so the front faces the normal in Unity space
                 for (int k = 1; k + 1 < f.Points.Length; k++)
                 {
@@ -208,15 +211,54 @@ namespace FortressUnited.Game
             return mesh;
         }
 
-        /// <summary>Rescales one face's UVs (from first on) to 0..1 around its middle, keeping the aspect.</summary>
-        static void FitUVs(List<Vector2> uvs, int first)
+        /// <summary>
+        /// The UV area each logo face belongs to: the compiler may split one logo
+        /// surface into several polygons, so pieces on the same plane whose texture
+        /// areas touch are joined and the logo is fitted once across them all.
+        /// </summary>
+        Rect[] LogoGroups(List<BspFile.Face> faces, float w, float h)
         {
-            Vector2 min = uvs[first], max = uvs[first];
-            for (int k = first; k < uvs.Count; k++)
+            int n = faces.Count;
+            var rects = new Rect[n];
+            for (int i = 0; i < n; i++)
             {
-                min = Vector2.Min(min, uvs[k]);
-                max = Vector2.Max(max, uvs[k]);
+                var ti = Bsp.TexInfos[faces[i].TexInfo];
+                Vector2 min = new Vector2(float.MaxValue, float.MaxValue), max = -min;
+                foreach (var p in faces[i].Points)
+                {
+                    var uv = new Vector2((Vec3.Dot(p, ti.S) + ti.SOffset) / w, (Vec3.Dot(p, ti.T) + ti.TOffset) / h);
+                    min = Vector2.Min(min, uv); max = Vector2.Max(max, uv);
+                }
+                rects[i] = Rect.MinMaxRect(min.x, min.y, max.x, max.y);
             }
+            var parent = new int[n];
+            for (int i = 0; i < n; i++) parent[i] = i;
+            int Root(int i) { while (parent[i] != i) i = parent[i] = parent[parent[i]]; return i; }
+            for (int i = 0; i < n; i++)
+                for (int j = i + 1; j < n; j++)
+                {
+                    if (faces[i].Plane != faces[j].Plane || faces[i].BackSide != faces[j].BackSide) continue;
+                    var a = rects[i]; var b = rects[j];
+                    if (a.xMin <= b.xMax + 0.02f && b.xMin <= a.xMax + 0.02f && a.yMin <= b.yMax + 0.02f && b.yMin <= a.yMax + 0.02f)
+                        parent[Root(i)] = Root(j);
+                }
+            var group = new Dictionary<int, Rect>();
+            for (int i = 0; i < n; i++)
+            {
+                int r = Root(i);
+                group[r] = group.TryGetValue(r, out var g)
+                    ? Rect.MinMaxRect(Mathf.Min(g.xMin, rects[i].xMin), Mathf.Min(g.yMin, rects[i].yMin), Mathf.Max(g.xMax, rects[i].xMax), Mathf.Max(g.yMax, rects[i].yMax))
+                    : rects[i];
+            }
+            var result = new Rect[n];
+            for (int i = 0; i < n; i++) result[i] = group[Root(i)];
+            return result;
+        }
+
+        /// <summary>Rescales one face's UVs (from first on) so its logo area maps to 0..1 around the middle, keeping the aspect.</summary>
+        static void FitUVs(List<Vector2> uvs, int first, Rect area)
+        {
+            Vector2 min = area.min, max = area.max;
             Vector2 size = max - min, mid = (min + max) * 0.5f;
             float s = Math.Max(size.x, size.y);
             if (s <= 0) return;

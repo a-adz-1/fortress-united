@@ -38,6 +38,7 @@ namespace FortressUnited.EditorTools
             {
                 var logo = (TextureImporter)assetImporter;
                 logo.isReadable = true;
+                logo.anisoLevel = 8;          // sharp when seen at an angle on a wall
                 logo.wrapMode = TextureWrapMode.Clamp;
                 logo.alphaSource = TextureImporterAlphaSource.FromInput;
                 logo.alphaIsTransparency = true;

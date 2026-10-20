@@ -18,11 +18,11 @@ namespace FortressUnited.Game
 
             var profile = ScriptableObject.CreateInstance<VolumeProfile>();
             var bloom = profile.Add<Bloom>(true);
-            bloom.threshold.Override(1.0f);
+            bloom.threshold.Override(1.3f);      // only real glows bloom, not sunlit white walls
             bloom.intensity.Override(0.9f);
             bloom.scatter.Override(0.65f);
             var tone = profile.Add<Tonemapping>(true);
-            tone.mode.Override(TonemappingMode.Neutral);
+            tone.mode.Override(TonemappingMode.ACES);      // film-like roll-off: sunlit white walls stay detailed instead of clipping
 
             var go = new GameObject("Post Processing");
             var volume = go.AddComponent<Volume>();

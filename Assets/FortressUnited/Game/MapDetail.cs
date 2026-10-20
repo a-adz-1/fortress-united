@@ -243,9 +243,18 @@ namespace FortressUnited.Game
             return runs;
         }
 
-        /// <summary>A floor edge here drops at least 2.5 m on its outward side, and isn't against a wall.</summary>
+        /// <summary>
+        /// A floor edge here is a ledge players stand on: it drops at least 2.5 m on
+        /// its outward side, isn't against a wall, has standing room above (not a
+        /// window sill) and floor to stand on behind it.
+        /// </summary>
         static bool Ledge(Vector3 edgePoint, Vector3 outward)
         {
+            Vector3 inside = edgePoint - outward * 0.5f;
+            if (Physics.Raycast(inside + Vector3.up * 0.1f, Vector3.up, 1.9f))
+                return false;
+            if (!Physics.Raycast(inside + Vector3.up * 0.3f, Vector3.down, out var stand, 0.5f) || stand.normal.y < 0.9f)
+                return false;
             Vector3 beyond = edgePoint + outward * 0.25f + Vector3.up * 0.3f;
             if (Physics.Raycast(beyond, Vector3.down, 2.8f))
                 return false;
