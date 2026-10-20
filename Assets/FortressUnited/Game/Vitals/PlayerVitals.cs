@@ -46,11 +46,20 @@ namespace FortressUnited.Game
             }
         }
 
+        /// <summary>Seconds of fading heartbeats after death before the line goes flat.</summary>
+        public float DyingSeconds = 2.5f;
+        float deadFor;
+        /// <summary>True once the trace has gone flat after death.</summary>
+        public bool Flatlined => Dead && deadFor >= DyingSeconds;
+
         // ECG state
         float beatPhase;          // 0-1 through the current beat
         float beatLength = 1;     // scale on the current beat (irregular when concussed)
         float wander;
         readonly System.Random random = new System.Random();
+
+        /// <summary>Sets the heart rate directly (e.g. a body starts at the rate its player died with).</summary>
+        public void SetHeartRate(float bpm) => HeartRate = bpm;
 
         /// <summary>A jump: a small kick to the heart rate.</summary>
         public void OnJump() => HeartRate = Mathf.Min(220, HeartRate + 2.5f);
@@ -62,11 +71,14 @@ namespace FortressUnited.Game
         {
             if (Dead)
             {
-                HeartRate = Mathf.MoveTowards(HeartRate, 0, 120 * dt);
+                // A few slowing beats, then nothing
+                deadFor += dt;
+                HeartRate = deadFor < DyingSeconds ? Mathf.MoveTowards(HeartRate, 35, 60 * dt) : 0;
                 SpO2 = Mathf.MoveTowards(SpO2, 0, 20 * dt);
                 Systolic = Diastolic = 0;
                 return;
             }
+            deadFor = 0;
 
             float h = Mathf.Clamp01(Health / MaxHealth);
 
@@ -105,7 +117,7 @@ namespace FortressUnited.Game
         /// </summary>
         public float EcgSample(float dt)
         {
-            if (Dead || HeartRate < 1)
+            if (Flatlined || HeartRate < 1)
                 return (float)(random.NextDouble() - 0.5) * 0.02f;
 
             float beatsPerSecond = HeartRate / 60f;
@@ -122,6 +134,8 @@ namespace FortressUnited.Game
 
             float h = Mathf.Clamp01(Health / MaxHealth);
             float amp = 0.45f + 0.55f * h;
+            if (Dead)
+                amp = 0.6f * (1 - deadFor / DyingSeconds);   // fading agonal beats
             float p = beatPhase;
             float v = Bump(p, 0.12f, 0.035f) * 0.12f        // P wave
                     - Bump(p, 0.30f, 0.010f) * 0.12f        // Q

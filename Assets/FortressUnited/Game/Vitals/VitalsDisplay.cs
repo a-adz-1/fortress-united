@@ -20,13 +20,7 @@ namespace FortressUnited.Game
         static int instances;
 
         Text heartRate, spo2, temp, bp, status;
-        Texture2D ecg;
-        Color32[] ecgPixels;
-        int ecgX;
-        float ecgLastY;
-        const int EcgW = 256, EcgH = 120;
-        const float SweepSeconds = 3f;     // time for the trace to cross the screen
-        float pixelDebt;
+        EcgTrace ecg;
         Image statusBar;
 
         static readonly Color Teal = new Color(0.35f, 1f, 0.9f);
@@ -76,14 +70,12 @@ namespace FortressUnited.Game
             y -= 120;
 
             // ECG trace
-            ecg = new Texture2D(EcgW, EcgH, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
-            ecgPixels = new Color32[EcgW * EcgH];
-            ClearEcg();
+            ecg = new EcgTrace(256, 120);
             var ecgGo = new GameObject("ECG", typeof(RawImage));
             ecgGo.layer = 5;
             ecgGo.transform.SetParent(canvasGo.transform, false);
             var raw = ecgGo.GetComponent<RawImage>();
-            raw.texture = ecg;
+            raw.texture = ecg.Texture;
             ((RectTransform)ecgGo.transform).sizeDelta = new Vector2(Width - 24, 150);
             ecgGo.transform.localPosition = new Vector3(0, y, 0);
             y -= 120;
@@ -131,21 +123,6 @@ namespace FortressUnited.Game
             return t;
         }
 
-        void ClearEcg()
-        {
-            var bg = new Color32(3, 13, 16, 255);
-            for (int i = 0; i < ecgPixels.Length; i++)
-                ecgPixels[i] = bg;
-            // faint grid
-            var grid = new Color32(10, 40, 45, 255);
-            for (int x = 0; x < EcgW; x += 16)
-                for (int y = 0; y < EcgH; y++)
-                    ecgPixels[y * EcgW + x] = grid;
-            for (int y = 0; y < EcgH; y += 20)
-                for (int x = 0; x < EcgW; x++)
-                    ecgPixels[y * EcgW + x] = grid;
-        }
-
         void Update()
         {
             if (Vitals == null)
@@ -153,36 +130,11 @@ namespace FortressUnited.Game
             float dt = Time.deltaTime;
             Vitals.Update(dt);
 
-            // Sweep the ECG across the screen, erasing just ahead like a monitor
-            pixelDebt += dt * EcgW / SweepSeconds;
-            int steps = Mathf.Min(EcgW, (int)pixelDebt);
-            pixelDebt -= steps;
-            float sampleDt = SweepSeconds / EcgW;
-            Color32 line = Vitals.Dead ? new Color32(255, 70, 70, 255) : new Color32(90, 255, 220, 255);
-            for (int s = 0; s < steps; s++)
-            {
-                float v = Vitals.EcgSample(sampleDt);
-                float y = Mathf.Clamp(EcgH * 0.3f + v * EcgH * 0.6f, 1, EcgH - 2);
-                EraseColumn((ecgX + 6) % EcgW);
-                int y0 = (int)Mathf.Min(ecgLastY, y), y1 = (int)Mathf.Max(ecgLastY, y);
-                if (ecgX == 0) y0 = y1 = (int)y;
-                for (int py = y0; py <= y1; py++)
-                {
-                    ecgPixels[py * EcgW + ecgX] = line;
-                    if (ecgX + 1 < EcgW) ecgPixels[py * EcgW + ecgX + 1] = line;
-                }
-                ecgLastY = y;
-                ecgX = (ecgX + 1) % EcgW;
-            }
-            if (steps > 0)
-            {
-                ecg.SetPixels32(ecgPixels);
-                ecg.Apply(false);
-            }
+            ecg.Step(Vitals, dt);
 
             // Numbers
             int hr = Mathf.RoundToInt(Vitals.HeartRate);
-            heartRate.text = Vitals.Dead ? "--" : hr.ToString();
+            heartRate.text = Vitals.Flatlined ? "--" : hr.ToString();
             heartRate.color = Vitals.Dead || hr > 180 ? Alarm : hr > 140 ? Warn : Teal;
             spo2.text = Vitals.Dead ? "--" : $"{Mathf.RoundToInt(Vitals.SpO2)}%";
             spo2.color = Vitals.SpO2 < 90 ? Alarm : Vitals.SpO2 < 95 ? Warn : Teal;
@@ -200,14 +152,6 @@ namespace FortressUnited.Game
                 c *= 0.45f;
             status.color = c;
             statusBar.color = new Color(c.r * 0.3f, c.g * 0.3f, c.b * 0.3f, 0.7f);
-        }
-
-        void EraseColumn(int x)
-        {
-            var bg = new Color32(3, 13, 16, 255);
-            var grid = new Color32(10, 40, 45, 255);
-            for (int y = 0; y < EcgH; y++)
-                ecgPixels[y * EcgW + x] = x % 16 == 0 || y % 20 == 0 ? grid : bg;
         }
 
         void OnDestroy()

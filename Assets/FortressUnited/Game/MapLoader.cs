@@ -72,7 +72,7 @@ namespace FortressUnited.Game
 
             var worldRoot = new GameObject("World");
             worldRoot.transform.SetParent(transform, false);
-            BuildModel(0, worldRoot.transform);
+            BuildModel(0, worldRoot.transform, solid: true);
 
             var entityRoot = new GameObject("Entities");
             entityRoot.transform.SetParent(transform, false);
@@ -83,7 +83,7 @@ namespace FortressUnited.Game
                 var go = new GameObject($"{b.ClassName} *{b.Model}");
                 go.transform.SetParent(entityRoot.transform, false);
                 go.transform.localPosition = GoldSrcSpace.ToUnity(b.Origin);
-                BuildModel(b.Model, go.transform);
+                BuildModel(b.Model, go.transform, b.Solid);
             }
 
             foreach (var e in Bsp.Entities)
@@ -116,7 +116,8 @@ namespace FortressUnited.Game
         }
 
         /// <summary>Builds one mesh per texture for a BSP model under parent.</summary>
-        void BuildModel(int model, Transform parent)
+        /// <param name="solid">Adds mesh colliders, for physics objects such as bodies (players use the BSP hulls).</param>
+        void BuildModel(int model, Transform parent, bool solid)
         {
             var m = Bsp.Models[model];
             var byTexture = new Dictionary<int, List<BspFile.Face>>();
@@ -141,6 +142,9 @@ namespace FortressUnited.Game
                 var mr = go.AddComponent<MeshRenderer>();
                 mr.sharedMaterial = MaterialFor(kv.Key);
                 mr.shadowCastingMode = ShadowCastingMode.TwoSided;
+                // Water, slime and lava ('!' textures) aren't solid
+                if (solid && !Bsp.Textures[kv.Key].Name.StartsWith("!"))
+                    go.AddComponent<MeshCollider>().sharedMesh = go.GetComponent<MeshFilter>().sharedMesh;
             }
         }
 
