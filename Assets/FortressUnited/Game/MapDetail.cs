@@ -11,8 +11,9 @@ namespace FortressUnited.Game
     /// <list type="bullet">
     /// <item>ribs: arched metal frames every 3 m along corridors (walls both sides,
     /// a ceiling, open both ways), each with a light strip</item>
-    /// <item>railings: floor edges with a real drop get a glowing lip and a light rail on
-    /// posts (visual only, so ledges players jump off still work as in TFC)</item>
+    /// <item>railings: floor edges with a real drop get a glowing lip; under a roof also a
+    /// light rail on posts (visual only, so ledges players jump off still work as in
+    /// TFC); open-air ledges like balconies keep just the lip</item>
     /// <item>door frames: chunky frames round every door with glowing inner edges</item>
     /// </list>
     /// Nothing here collides: movement is exactly as the map was built. Glow
@@ -275,6 +276,10 @@ namespace FortressUnited.Game
             // Glowing lip along the edge, and a light rail on posts
             g.Box(lip + Vector3.up * 0.025f, rot, new Vector3(0.05f, 0.04f, len));
             metal.Box(lip + Vector3.up * 0.05f - outward * 0.03f, rot, new Vector3(0.1f, 0.1f, len));       // kerb
+            // Open-air ledges (balconies, battlements) stay open to jump from: just the lip.
+            // Under a roof (a covered bridge, a walkway indoors) they get a rail.
+            if (!Physics.Raycast((from + to) * 0.5f - outward * 0.3f + Vector3.up * 0.5f, Vector3.up, 40f))
+                return;
             int posts = Mathf.Max(2, Mathf.CeilToInt(len / 2f) + 1);
             for (int p = 0; p < posts; p++)
             {

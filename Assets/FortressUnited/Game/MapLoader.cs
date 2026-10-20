@@ -72,7 +72,10 @@ namespace FortressUnited.Game
                 folders.Add(gameDir);
                 string root = Path.GetDirectoryName(gameDir);
                 if (root != null)
+                {
+                    folders.Add(Path.Combine(root, "tfc"));        // TFC's own WADs, for maps in tfc_downloads
                     folders.Add(Path.Combine(root, "valve"));
+                }
             }
             textures = new TextureSource(Bsp, folders);
 

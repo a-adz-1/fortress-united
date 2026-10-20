@@ -60,7 +60,29 @@ namespace FortressUnited.Game
                 (material, mode, team) = e;
                 return true;
             }
-            return false;
+            // Not in the table (a newer map's own textures): a guess from the name
+            mode = Guess(name);
+            material = "";
+            team = name.IndexOf("blu", StringComparison.OrdinalIgnoreCase) >= 0 ? "blue"
+                 : name.IndexOf("red", StringComparison.OrdinalIgnoreCase) >= 0 ? "red" : "";
+            return mode != null;
+        }
+
+        /// <summary>The look for a texture the table doesn't know, from its name.</summary>
+        static string Guess(string name)
+        {
+            string n = name.ToLowerInvariant();
+            if (n.StartsWith("sky") || n.StartsWith("{") || n.StartsWith("!") || n == "aaatrigger" || n == "clip" || n == "null")
+                return "keep";
+            if (n.Contains("~") || n.StartsWith("light") || n.StartsWith("lite"))
+                return "light";
+            if (n.StartsWith("sign") || n.StartsWith("exit"))
+                return "sign";
+            if (n.StartsWith("glass") || n.Contains("window"))
+                return "glass";
+            if (n.Contains("rock") || n.Contains("cliff") || n.Contains("grass") || n.Contains("dirt") || n.Contains("sand"))
+                return "keep";      // natural surfaces need a library material; left as they were
+            return "panel";
         }
 
         /// <summary>
