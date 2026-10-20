@@ -73,6 +73,15 @@ namespace FortressUnited.Game
                 return;
             if (!Physics.SphereCast(cam.position, 0.12f, cam.forward, out var hit, Reach))
                 return;
+            var sentry = hit.collider.GetComponentInParent<SentryGun>();
+            if (sentry != null)
+            {
+                // Your own sentry: the game upgrades or repairs it
+                sentry.Fx?.Hit(hit.point, 6);
+                SentryGun.OnSpanner?.Invoke(sentry);
+                Arc?.Surge(1.5f);
+                return;
+            }
             var target = hit.collider.GetComponentInParent<RobotFx>();
             if (target != null)
                 target.Hit(hit.point, Damage);

@@ -16,6 +16,11 @@ namespace FortressUnited.Game
     ///   levels 2-3 every 0.1 s alternating barrels; 16 damage a bullet,
     ///   every 4th a tracer. Level 3 also fires a rocket every 3 s.
     /// Team colour comes from swapping the base colour texture.
+    /// Health is TFC's (150, x1.2 a level) and so is the blast when destroyed
+    /// (75 + 8 per rocket). The look is our own: it assembles with a
+    /// holographic scan when built or upgraded, hits ripple across it like
+    /// the robots, it sparks and smokes when damaged, and it blows apart
+    /// into physics debris that beams out.
     /// </summary>
     public sealed class SentryGun : MonoBehaviour
     {
@@ -29,6 +34,18 @@ namespace FortressUnited.Game
         public static readonly List<Transform> Targets = new List<Transform>();
         /// <summary>Called for each bullet or rocket that hits something.</summary>
         public System.Action<Transform, Vector3, float> OnHit;
+        /// <summary>A spanner landed on it (the game upgrades or repairs).</summary>
+        public static System.Action<SentryGun> OnSpanner;
+
+        public float Health { get; private set; }
+        public float MaxHealth { get; private set; }
+        public int Rockets = 20;
+        public bool Dead { get; private set; }
+        public RobotFx Fx { get; private set; }
+
+        public float AssembleSeconds = 1.1f;
+        float assemble = 1;           // 0-1 while assembling
+        float nextSmoke;
 
         Transform turret, gun, gunL, gunR, rockets, barrel, barrelL, barrelR, sensor, eye, rocketMuzzle;
         readonly List<Transform> muzzles = new List<Transform>();
@@ -50,7 +67,8 @@ namespace FortressUnited.Game
         Light eyeLight, flash;
         float flashUntil;
 
-        public static SentryGun Build(GameObject prefab, Vector3 position, float yaw, Color team, Texture2D teamBaseColor, int level)
+        /// <param name="upgrade">An upgrade assembles faster, from a sentry already standing.</param>
+        public static SentryGun Build(GameObject prefab, Vector3 position, float yaw, Color team, Texture2D teamBaseColor, int level, bool upgrade = false)
         {
             // The model goes inside a clean holder: imported models carry an axis
             // conversion rotation on their root, so the holder gives true up/right/forward
@@ -62,7 +80,11 @@ namespace FortressUnited.Game
             s.TeamColour = team;
             s.TeamBaseColor = teamBaseColor;
             s.buildYaw = yaw;
+            s.MaxHealth = 150 * Mathf.Pow(1.2f, level - 1);
+            s.Health = s.MaxHealth;
+            if (upgrade) s.AssembleSeconds = 0.7f;
             s.Setup();
+            s.assemble = 0;
             return s;
         }
 
@@ -112,6 +134,15 @@ namespace FortressUnited.Game
                         if (m.HasProperty("_BaseMap"))
                             m.SetTexture("_BaseMap", TeamBaseColor);
 
+            // Robot effects (hit ripples, smoke) and hit boxes for each part
+            Fx = RobotFx.Attach(gameObject, TeamColour, turret);
+            foreach (var mf in GetComponentsInChildren<MeshFilter>())
+            {
+                var box = mf.gameObject.AddComponent<BoxCollider>();
+                box.center = mf.sharedMesh.bounds.center;
+                box.size = mf.sharedMesh.bounds.size;
+            }
+
             // Targeting light in the sensor
             var eyeAt = eye != null ? eye : (turret != null ? turret : transform);
             eyeLight = new GameObject("Eye Light").AddComponent<Light>();
@@ -138,6 +169,23 @@ namespace FortressUnited.Game
 
         void Update()
         {
+            if (Dead)
+                return;
+            if (assemble < 1)
+            {
+                // Assembling: no thinking until it's locked together
+                assemble = Mathf.Min(1, assemble + Time.deltaTime / AssembleSeconds);
+                Fx.Teleport = assemble < 1 ? assemble : -1;
+                if (assemble >= 1)
+                {
+                    Fx.SparkBurst(40);
+                    Fx.Hit(turret != null ? turret.position + Vector3.up * 0.3f : transform.position, 12);
+                    nextThink = Time.time + 0.2f;
+                }
+                Animate();
+                return;
+            }
+            DamageEffects();
             while (Time.time >= nextThink)
             {
                 nextThink += 0.1f;
@@ -267,9 +315,10 @@ namespace FortressUnited.Game
         void Fire()
         {
             // Level 3 rockets every 3 seconds, from the pod
-            if (Level == 3 && rocketMuzzle != null && Time.time > nextRocket)
+            if (Level == 3 && rocketMuzzle != null && Rockets > 0 && Time.time > nextRocket)
             {
                 nextRocket = Time.time + 3;
+                Rockets = Mathf.Max(0, Rockets - 1);
                 SentryRocket.Launch(rocketMuzzle.position, (AimPoint(enemy) - rocketMuzzle.position).normalized, TeamColour, this);
             }
 
@@ -299,14 +348,21 @@ namespace FortressUnited.Game
             showYaw += Mathf.DeltaAngle(showYaw, curYaw) * k;
             showPitch += (curPitch - showPitch) * k;
 
+            // Assembling: the turret rises out of the base, the gun swings up into
+            // place and the barrels slide forward, settling with a little overshoot
+            float a = Overshoot(assemble);
             Turn(turret, showYaw);
+            if (turret != null)
+                turret.localPosition = restPos[turret] - turnAxis[turret] * 0.35f * (1 - a) / Mathf.Max(0.0001f, turret.parent.lossyScale.y);
             foreach (var g in new[] { gun, gunL, gunR, rockets })
-                Turn(g, -showPitch);   // positive about the right axis tips the front down
+                Turn(g, -showPitch + 70 * (1 - a));   // positive about the right axis tips the front down
 
             // Barrel kick (levels 1-2) and gatling spin (level 3)
             recoil = Mathf.MoveTowards(recoil, 0, Time.deltaTime * 12);
-            if (barrel != null)
-                barrel.localPosition = restPos[barrel] - turnAxis[barrel] * 0.04f * recoil / Mathf.Max(0.0001f, barrel.parent.lossyScale.x);
+            float slide = 0.04f * recoil + 0.3f * (1 - Mathf.Clamp01(a));
+            foreach (var b in new[] { barrel, barrelL, barrelR })
+                if (b != null)
+                    b.localPosition = restPos[b] - turnAxis[b] * slide / Mathf.Max(0.0001f, b.parent.lossyScale.x);
             spinSpeed = Mathf.MoveTowards(spinSpeed, enemy != null ? 1 : 0, Time.deltaTime * (enemy != null ? 4 : 0.7f));
             spin += spinSpeed * 1400 * Time.deltaTime;
             Turn(barrelL, spin);
@@ -314,7 +370,149 @@ namespace FortressUnited.Game
 
             flash.intensity = Time.time < flashUntil ? 4 : 0;
             // The eye brightens and flickers while locked on
-            eyeLight.intensity = enemy != null ? 2.5f + Random.value : 0.6f;
+            eyeLight.intensity = assemble < 1 ? 0 : enemy != null ? 2.5f + Random.value : 0.6f;
+        }
+
+        static float Overshoot(float t)
+        {
+            // Ease out with a small overshoot (back easing)
+            const float c = 1.4f;
+            t = Mathf.Clamp01(t) - 1;
+            return 1 + (c + 1) * t * t * t + c * t * t;
+        }
+
+        // ------------------------------------------------------------ damage
+
+        /// <summary>Hit by a bullet, blast or melee: ripples, loses health, explodes at 0.</summary>
+        public void TakeDamage(Vector3 point, float damage)
+        {
+            if (Dead)
+                return;
+            Fx.Hit(point, damage);
+            Health -= damage;
+            if (Health <= 0)
+                Explode();
+        }
+
+        /// <summary>Repair from the spanner; returns how much it mended.</summary>
+        public float Repair(float amount)
+        {
+            float before = Health;
+            Health = Mathf.Min(MaxHealth, Health + amount);
+            return Health - before;
+        }
+
+        /// <summary>Sparks under two thirds health, smoke and sparks under a third.</summary>
+        void DamageEffects()
+        {
+            float h = Health / MaxHealth;
+            Fx.Heat = h < 0.33f ? 0.7f : 0;
+            if (h < 0.66f && Time.time >= nextSmoke)
+            {
+                Fx.SparkBurst(h < 0.33f ? 10 : 5);
+                nextSmoke = Time.time + Random.Range(0.3f, 1.2f) * (h < 0.33f ? 0.5f : 1);
+            }
+        }
+
+        /// <summary>
+        /// Blows apart: the moving parts fly off as physics debris, the base is
+        /// left scorched, a fireball lights everything up, and the wreckage
+        /// beams out after a few seconds. Blast damage is TFC's.
+        /// </summary>
+        public void Explode()
+        {
+            if (Dead)
+                return;
+            Dead = true;
+            Health = 0;
+            Vector3 centre = turret != null ? turret.position + Vector3.up * 0.3f : transform.position + Vector3.up * 0.8f;
+
+            // Blast: TFC RadiusDamage(75 + rockets*8), radius 2.5x the damage in units, falling off with distance
+            float damage = 75 + Rockets * 8;
+            float radius = damage * 2.5f * Unit;
+            foreach (var col in Physics.OverlapSphere(centre, radius))
+            {
+                if (col.transform.IsChildOf(transform))
+                    continue;
+                Vector3 p = col.ClosestPoint(centre);
+                OnHit?.Invoke(col.transform, p, damage * (1 - Vector3.Distance(p, centre) / radius));
+            }
+
+            // Moving parts become debris
+            var debris = new List<Transform>();
+            foreach (var part in new[] { turret, gun, gunL, gunR, rockets, barrel, barrelL, barrelR, sensor })
+                if (part != null)
+                    debris.Add(part);
+            foreach (var part in debris)
+            {
+                part.SetParent(transform, true);
+                var rb = part.gameObject.AddComponent<Rigidbody>();
+                rb.mass = 8;
+                rb.interpolation = RigidbodyInterpolation.Interpolate;
+                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+                Vector3 away = (part.position - centre);
+                away.y = Mathf.Abs(away.y);
+                rb.linearVelocity = (away.normalized + Vector3.up * 0.8f + Random.insideUnitSphere * 0.4f).normalized * Random.Range(4f, 8f);
+                rb.angularVelocity = Random.insideUnitSphere * 12;
+            }
+            foreach (var t in debris)
+                foreach (var other in debris)
+                    if (t != other && t.GetComponent<Collider>() is Collider c1 && other.GetComponent<Collider>() is Collider c2)
+                        Physics.IgnoreCollision(c1, c2);
+
+            // Scorch what's left
+            foreach (var r in GetComponentsInChildren<Renderer>())
+                foreach (var m in r.materials)
+                    if (m.HasProperty("_BaseColor") && m.shader.name != RobotFx.ShaderName)
+                        m.SetColor("_BaseColor", m.GetColor("_BaseColor") * 0.35f);
+
+            // Fireball, sparks, smoke
+            eyeLight.intensity = 0;
+            var boom = new GameObject("Sentry Explosion");
+            boom.transform.position = centre;
+            boom.AddComponent<SentryExplosion>().Play(TeamColour, transform.position.y);
+            Fx.SparkBurst(120);
+            Fx.Glitch = 1;
+            Fx.Heat = 1;
+
+            // Beam the wreck out after a few seconds
+            StartCoroutine(BeamOut());
+        }
+
+        System.Collections.IEnumerator BeamOut()
+        {
+            yield return new WaitForSeconds(5);
+            Fx.Heat = 0;
+            Fx.Glitch = 0;
+            for (float t = 0; t < 1; t += Time.deltaTime / 1.5f)
+            {
+                Fx.Teleport = t;
+                foreach (var r in GetComponentsInChildren<Renderer>())
+                    if (r is MeshRenderer)
+                        foreach (var m in r.materials)
+                            if (m.shader.name != RobotFx.ShaderName && m.HasProperty("_BaseColor"))
+                                Fade(m, 1 - Mathf.Clamp01((t - 0.2f) / 0.8f));
+                yield return null;
+            }
+            Destroy(gameObject);
+        }
+
+        static void Fade(Material m, float alpha)
+        {
+            if (m.GetFloat("_Surface") < 0.5f)
+            {
+                m.SetFloat("_Surface", 1);
+                m.SetFloat("_Blend", 0);
+                m.SetOverrideTag("RenderType", "Transparent");
+                m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                m.SetFloat("_ZWrite", 0);
+                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
+            var c = m.GetColor("_BaseColor");
+            c.a = alpha;
+            m.SetColor("_BaseColor", c);
         }
 
         /// <summary>Turns a part from its rest pose about its axis (degrees).</summary>
@@ -322,6 +520,71 @@ namespace FortressUnited.Game
         {
             if (t != null && restRot.TryGetValue(t, out var rest))
                 t.localRotation = Quaternion.AngleAxis(degrees, turnAxis[t]) * rest;
+        }
+    }
+
+    /// <summary>
+    /// A building's explosion: a white-hot flash that cools through orange,
+    /// a burst of sparks and a column of dark smoke, plus a team-coloured
+    /// shock ring along the ground.
+    /// </summary>
+    public sealed class SentryExplosion : MonoBehaviour
+    {
+        Light glow;
+        float groundY;
+        LineRenderer ring;
+        float age;
+        ParticleSystem smoke;
+
+        public void Play(Color team, float ground)
+        {
+            groundY = ground;
+            glow = gameObject.AddComponent<Light>();
+            glow.type = LightType.Point;
+            glow.range = 9;
+            glow.shadows = LightShadows.None;
+
+            FxParticles.Sparks(transform, new Color(1f, 0.75f, 0.35f)).Emit(140);
+            FxParticles.Sparks(transform, Color.Lerp(team, Color.white, 0.4f)).Emit(60);
+
+            // Dark smoke rising
+            smoke = FxParticles.Steam(transform);
+            var main = smoke.main;
+            main.startColor = new Color(0.12f, 0.12f, 0.13f, 0.7f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.4f, 0.8f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(1f, 2.5f);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.5f, 3f);
+            smoke.Emit(40);
+
+            // Shock ring on the ground
+            ring = gameObject.AddComponent<LineRenderer>();
+            ring.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
+            ring.loop = true;
+            ring.positionCount = 48;
+            ring.useWorldSpace = false;
+            ring.startColor = ring.endColor = Color.Lerp(team, Color.white, 0.5f);
+            ring.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            Destroy(gameObject, 4);
+        }
+
+        void Update()
+        {
+            age += Time.deltaTime;
+            // White flash, then orange, then out
+            float t = age / 0.6f;
+            glow.color = Color.Lerp(Color.white, new Color(1f, 0.45f, 0.1f), Mathf.Clamp01(t * 2));
+            glow.intensity = Mathf.Max(0, 12 * (1 - t));
+            if (ring != null)
+            {
+                float r = Mathf.Lerp(0.2f, 4f, Mathf.Sqrt(Mathf.Clamp01(age / 0.5f)));
+                for (int i = 0; i < ring.positionCount; i++)
+                {
+                    float a = i * Mathf.PI * 2 / ring.positionCount;
+                    ring.SetPosition(i, new Vector3(Mathf.Cos(a) * r, groundY - transform.position.y + 0.05f, Mathf.Sin(a) * r));
+                }
+                ring.widthMultiplier = 0.08f * (1 - Mathf.Clamp01(age / 0.5f));
+                if (age > 0.5f) { Destroy(ring); ring = null; }
+            }
         }
     }
 
