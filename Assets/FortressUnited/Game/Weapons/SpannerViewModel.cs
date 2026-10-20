@@ -103,12 +103,18 @@ namespace FortressUnited.Game
         void Update()
         {
             var mouse = Mouse.current;
-            if (mouse != null && mouse.leftButton.wasPressedThisFrame && Cursor.lockState == CursorLockMode.Locked && swingT < 0)
-            {
-                swingT = 0;
-                swingHit = false;
-                Arc?.Surge(1);
-            }
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame && Cursor.lockState == CursorLockMode.Locked)
+                Swing();
+        }
+
+        /// <summary>Starts a swing (left click does this; scripts can too).</summary>
+        public void Swing()
+        {
+            if (swingT >= 0)
+                return;
+            swingT = 0;
+            swingHit = false;
+            Arc?.Surge(1);
         }
 
         void LateUpdate()

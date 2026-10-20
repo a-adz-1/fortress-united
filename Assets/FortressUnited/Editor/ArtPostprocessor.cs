@@ -27,7 +27,7 @@ namespace FortressUnited.EditorTools
         static readonly string[] TextureSuffixes = { "_BaseColor", "_Red_BaseColor", "_Normal", "_MetallicSmoothness", "_Emission" };
 
         // Bump to make Unity reimport everything this processes
-        public override uint GetVersion() => 9;
+        public override uint GetVersion() => 10;
         // After URP's own material description preprocessor
         public override int GetPostprocessOrder() => 100;
 
@@ -78,6 +78,8 @@ namespace FortressUnited.EditorTools
             mi.materialLocation = ModelImporterMaterialLocation.InPrefab;
             mi.useFileScale = true;
             mi.globalScale = 1;
+            // Readable: the game looks at screen planes and markers (e.g. the repair kit's screen corners)
+            mi.isReadable = true;
             if (assetPath.StartsWith(Characters))
             {
                 mi.animationType = ModelImporterAnimationType.Human;

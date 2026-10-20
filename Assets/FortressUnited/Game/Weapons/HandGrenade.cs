@@ -74,6 +74,21 @@ namespace FortressUnited.Game
             velocity = (forward * 600 + up * (200 + Random.Range(-10f, 10f))) * Unit;
         }
 
+        /// <summary>Throws with an exact velocity in m/s (scripted throws, lobs at a spot).</summary>
+        public void Throw(Vector3 velocityMs)
+        {
+            Held = false;
+            follow = null;
+            velocity = velocityMs;
+        }
+
+        /// <summary>The velocity (m/s) that lobs a grenade from one point to land on another in the given time.</summary>
+        public static Vector3 Lob(Vector3 from, Vector3 to, float seconds)
+        {
+            Vector3 g = Vector3.down * Gravity * Unit;
+            return (to - from - 0.5f * g * seconds * seconds) / seconds;
+        }
+
         void Update()
         {
             float left = GoesOffAt - Time.time;
