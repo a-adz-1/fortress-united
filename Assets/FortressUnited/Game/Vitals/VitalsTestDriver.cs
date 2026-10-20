@@ -10,21 +10,34 @@ namespace FortressUnited.Game
     ///   1 concussion   2 set on fire   3 infect   4 take 25 damage
     ///   5 heal (clears everything)   6 die / respawn
     ///   7 drop an enemy body ahead, as if hit by a rocket
-    ///   9 stand a target dummy ahead; right click fires a test shot
-    /// Concussion wears off over 10 seconds like a TFC conc grenade and
-    /// wobbles the view.
+    ///   9 stand a target dummy ahead (it copies your conc/fire/virus state);
+    ///     right click fires a test shot
+    /// Concussion is TFC's: strength 100 fading to 0 over 15 seconds (7 for
+    /// medics), swaying the view with the engine's idle sway at that scale,
+    /// plus a light haze of static. Target dummies mirror your state, so you
+    /// can see what other players see when you're concussed, on fire or
+    /// infected.
     /// </summary>
     public sealed class VitalsTestDriver : MonoBehaviour
     {
         public PlayerController Player;
         public PlayerVitals Vitals;
         public Color EnemyColour = new Color(1f, 0.3f, 0.25f);
+        [Tooltip("Medics shake off concussion in 7 seconds instead of 15.")]
+        public bool Medic = true;
+
+        // TFC's idle sway (cl_dll/view.cpp V_AddIdle, default cvars)
+        const float IdlePitchCycle = 1, IdleYawCycle = 2, IdleRollCycle = 0.5f;
+        const float IdlePitchLevel = 0.3f, IdleYawLevel = 0.3f, IdleRollLevel = 0.1f;
+
+        readonly System.Collections.Generic.List<RobotFx> dummies = new System.Collections.Generic.List<RobotFx>();
+        ScreenHaze haze;
+        float concStart = -1000;
 
         bool wasOnGround;
         float burnUntil;
-        float concussTime;
 
-        const float ConcDuration = 10;
+        float ConcDuration => Medic ? 7 : 15;
 
         void Update()
         {
@@ -44,7 +57,7 @@ namespace FortressUnited.Game
 
             if (kb != null)
             {
-                if (kb.digit1Key.wasPressedThisFrame) { concussTime = ConcDuration; Vitals.OnDamage(10); }
+                if (kb.digit1Key.wasPressedThisFrame) { concStart = Time.time; Vitals.OnDamage(10); }
                 if (kb.digit2Key.wasPressedThisFrame) { burnUntil = Time.time + 6; Vitals.OnDamage(10); }
                 if (kb.digit3Key.wasPressedThisFrame) Vitals.Infected = true;
                 if (kb.digit4Key.wasPressedThisFrame) Damage(25);
@@ -53,7 +66,7 @@ namespace FortressUnited.Game
                     Vitals.Health = Vitals.MaxHealth;
                     Vitals.Infected = false;
                     burnUntil = 0;
-                    concussTime = 0;
+                    concStart = -1000;
                 }
                 if (kb.digit7Key.wasPressedThisFrame)
                     DropTestBody();
@@ -67,7 +80,7 @@ namespace FortressUnited.Game
                         Vitals.Health = Vitals.MaxHealth;
                         Vitals.Infected = false;
                         burnUntil = 0;
-                        concussTime = 0;
+                        concStart = -1000;
                     }
                 }
             }
@@ -82,12 +95,29 @@ namespace FortressUnited.Game
             if (Vitals.Infected && Mathf.Repeat(Time.time + 0.5f, 2) < Time.deltaTime)
                 Damage(3);
 
-            concussTime = Mathf.Max(0, concussTime - Time.deltaTime);
-            Vitals.Concussion = concussTime / ConcDuration * 100;
+            // TFC: m_iConcussion = 100 * time left / duration (player.cpp CheckTimeBasedDamage)
+            float left = concStart + ConcDuration - Time.time;
+            Vitals.Concussion = left > 0 ? Mathf.Floor(100 * left / ConcDuration) : 0;
 
-            // Concussion wobble, as TFC's conc does with the view
-            float c = Vitals.Concussion / 100f;
-            Player.ViewOffset = new Vec3(Mathf.Sin(Time.time * 2.3f) * 6 * c, Mathf.Sin(Time.time * 1.7f) * 6 * c, Mathf.Sin(Time.time * 1.1f) * 3 * c);
+            // ... and the client sways the view by it (view.cpp V_AddIdle)
+            float scale = Vitals.Concussion, t = Time.time;
+            Player.ViewOffset = new Vec3(
+                scale * Mathf.Sin(t * IdlePitchCycle) * IdlePitchLevel,
+                scale * Mathf.Sin(t * IdleYawCycle) * IdleYawLevel,
+                scale * Mathf.Sin(t * IdleRollCycle) * IdleRollLevel);
+
+            if (haze == null)
+                haze = ScreenHaze.Create();
+            haze.Amount = Vitals.Concussion / 100f;
+
+            // Dummies show your state as others would see it
+            dummies.RemoveAll(d => d == null);
+            foreach (var d in dummies)
+            {
+                d.Heat = Mathf.MoveTowards(d.Heat, Vitals.Burning ? 1 : 0, Time.deltaTime * 2);
+                d.Virus = Vitals.Infected ? 1 : 0;
+                d.Glitch = Vitals.Concussion / 100f;
+            }
         }
 
         /// <summary>Somewhere ahead on the floor, short of any wall.</summary>
@@ -111,7 +141,9 @@ namespace FortressUnited.Game
         {
             if (!SpotAhead(3, out var feet, out var flat))
                 return;
-            Mannequin.Build(feet, Quaternion.LookRotation(-flat).eulerAngles.y, EnemyColour, out _, out _, colliders: true).name = "Target Dummy";
+            var dummy = Mannequin.Build(feet, Quaternion.LookRotation(-flat).eulerAngles.y, EnemyColour, out _, out _, colliders: true);
+            dummy.name = "Target Dummy";
+            dummies.Add(dummy.GetComponent<RobotFx>());
         }
 
         void TestShot()
@@ -119,7 +151,7 @@ namespace FortressUnited.Game
             var cam = Player.GetComponentInChildren<Camera>();
             if (cam == null || !Physics.Raycast(cam.transform.position, cam.transform.forward, out var hit, 60))
                 return;
-            var target = hit.collider.GetComponentInParent<HitRipple>();
+            var target = hit.collider.GetComponentInParent<RobotFx>();
             if (target != null)
                 target.Hit(hit.point, 20);
             if (hit.rigidbody != null && !hit.rigidbody.isKinematic)

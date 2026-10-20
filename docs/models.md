@@ -39,7 +39,7 @@ world version for other players to see (`p_` models), listed below.
 - [~] Spanner, engineer (`v_tfc_spanner`): blue and red plasma spanners in
   `Art/Spanner` (25k triangles, 2K textures) with a live plasma arc and a
   swing in the greybox; waiting on a first in-editor look
-- [~] Medikit, medic (`v_tfc_medkit`): blue and red models in
+- [~] Repair kit (TFC's medikit), medic (`v_tfc_medkit`): blue and red models in
   `Art/Medkit` (30k triangles, 2K textures) with a live vitals screen in the
   greybox; waiting on a first in-editor look
 - [ ] Knife, spy (`v_tfc_knife`)

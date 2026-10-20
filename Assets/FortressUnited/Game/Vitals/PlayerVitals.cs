@@ -3,13 +3,15 @@ using UnityEngine;
 namespace FortressUnited.Game
 {
     /// <summary>
-    /// A player's vital signs for the medikit screen, driven by what's
+    /// A robot's system readings for the repair kit screen (the medikit),
+    /// driven by what's
     /// happening in the game: heart rate climbs with speed (bunny hopping
     /// pushes it hard), each jump, concussion, fire, infection and damage,
-    /// and settles back at rest; SpO2 drops while underwater; temperature
-    /// rises when burning or infected; blood pressure follows health. Also
-    /// generates the ECG trace, which goes irregular when concussed and
-    /// flatlines on death.
+    /// and settles back at rest. Shown as the core pulse; SpO2 shows as seal
+    /// integrity (water gets in while submerged); temperature rises when
+    /// overheating (on fire) or with a virus (infected); blood pressure
+    /// follows health. Also generates the pulse trace, which goes irregular
+    /// when concussed (system glitch) and flatlines on death.
     /// </summary>
     public sealed class PlayerVitals
     {
@@ -34,15 +36,15 @@ namespace FortressUnited.Game
         {
             get
             {
-                if (Dead) return "FLATLINE";
-                if (Burning) return "BURNING";
-                if (Concussion > 0) return "CONCUSSED";
-                if (Infected) return "INFECTED";
-                if (Underwater && SpO2 < 92) return "HYPOXIA";
+                if (Dead) return "OFFLINE";
+                if (Burning) return "OVERHEATING";
+                if (Concussion > 0) return "SYSTEM GLITCH";
+                if (Infected) return "VIRUS DETECTED";
+                if (Underwater && SpO2 < 92) return "WATER INGRESS";
                 if (Health < 30) return "CRITICAL";
-                if (HeartRate > 150) return "MAX EFFORT";
+                if (HeartRate > 150) return "MAX OUTPUT";
                 if (HeartRate > 110) return "ELEVATED";
-                return "STABLE";
+                return "NOMINAL";
             }
         }
 

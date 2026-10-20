@@ -33,8 +33,19 @@ namespace FortressUnited.Game
 
         public BspWorld World;
         public MoveState State { get; private set; }
-        /// <summary>Extra view angles on top of the punch angle (concussion wobble).</summary>
+        /// <summary>
+        /// Extra view angles on top of the punch angle: the concussion sway.
+        /// Like TFC's idle sway it only moves what you see; aim and movement
+        /// use the real angles.
+        /// </summary>
         public Vec3 ViewOffset;
+
+        /// <summary>
+        /// Rotation for held view models: TFC takes the idle sway back off
+        /// the weapon (all of the yaw and roll, half the pitch), so it stays
+        /// near the real aim while the view sways.
+        /// </summary>
+        public Quaternion ViewModelRotation { get; private set; } = Quaternion.identity;
 
         readonly PlayerMovement movement = new PlayerMovement();
         readonly MoveVars vars = new MoveVars();
@@ -132,6 +143,7 @@ namespace FortressUnited.Game
             cam.transform.position = GoldSrcSpace.ToUnity(eye);
             Vec3 view = new Vec3(viewAngles.X + State.PunchAngle.X + ViewOffset.X, viewAngles.Y + State.PunchAngle.Y + ViewOffset.Y, State.Angles.Z + ViewOffset.Z);
             cam.transform.rotation = GoldSrcSpace.AnglesToUnity(view);
+            ViewModelRotation = GoldSrcSpace.AnglesToUnity(new Vec3(view.X - ViewOffset.X * 0.5f, view.Y - ViewOffset.Y, view.Z - ViewOffset.Z));
             cam.fieldOfView = Camera.HorizontalToVerticalFieldOfView(FieldOfView, cam.aspect);
         }
 

@@ -73,7 +73,7 @@ namespace FortressUnited.Game
                 return;
             if (!Physics.SphereCast(cam.position, 0.12f, cam.forward, out var hit, Reach))
                 return;
-            var target = hit.collider.GetComponentInParent<HitRipple>();
+            var target = hit.collider.GetComponentInParent<RobotFx>();
             if (target != null)
                 target.Hit(hit.point, Damage);
             if (hit.rigidbody != null && !hit.rigidbody.isKinematic)
@@ -104,6 +104,8 @@ namespace FortressUnited.Game
 
         void LateUpdate()
         {
+            if (Player != null)
+                transform.rotation = Player.ViewModelRotation;
             // Swing: wind up, chop down and across, recover
             Quaternion swing = Quaternion.identity;
             if (swingT >= 0)

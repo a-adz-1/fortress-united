@@ -5,8 +5,8 @@ namespace FortressUnited.Game
     /// <summary>
     /// A stand-in player body built from primitives (1.8 m, A-pose), with
     /// the bones a ragdoll needs and a spot for a chest screen. For testing
-    /// bodies before the rigged class models arrive. Hits ripple its armour
-    /// (HitRipple); with colliders it can be shot as a standing target.
+    /// bodies before the rigged class models arrive. Robot effects show on
+    /// it (RobotFx); with colliders it can be shot as a standing target.
     /// </summary>
     public static class Mannequin
     {
@@ -69,7 +69,8 @@ namespace FortressUnited.Game
             if (!colliders)
                 foreach (var c in root.GetComponentsInChildren<Collider>())
                     Object.DestroyImmediate(c);
-            HitRipple.Attach(root, team);
+            var core = Bone("Core", b.Spine, new Vector3(0, 0.2f, 0.05f));
+            RobotFx.Attach(root, team, core);
             bones = b;
             return root;
         }

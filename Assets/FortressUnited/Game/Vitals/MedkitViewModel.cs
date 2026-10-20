@@ -105,6 +105,8 @@ namespace FortressUnited.Game
 
         void LateUpdate()
         {
+            if (Player != null)
+                transform.rotation = Player.ViewModelRotation;
             if (model == null || Player == null || Player.State == null)
                 return;
 

@@ -4,9 +4,10 @@ using UnityEngine.UI;
 namespace FortressUnited.Game
 {
     /// <summary>
-    /// Draws a PlayerVitals readout (heart rate, live ECG trace, SpO2,
-    /// temperature, blood pressure, status) into a render texture every
-    /// frame, for screens on models such as the medikit. The UI rig lives
+    /// Draws a robot's system readout (core pulse with a live trace, seal
+    /// integrity, temperature, power, status) into a render texture every
+    /// frame, for screens on models such as the repair kit. A system glitch
+    /// or virus corrupts the readings now and then. The UI rig lives
     /// far from the map with its own camera, so nothing else sees it.
     /// </summary>
     public sealed class VitalsDisplay : MonoBehaviour
@@ -62,11 +63,11 @@ namespace FortressUnited.Game
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             float y = Height / 2f - 30;
 
-            Label(canvasGo.transform, font, "VITALS", 22, Dim, new Vector2(0, y), TextAnchor.MiddleCenter);
+            Label(canvasGo.transform, font, "SYSTEMS", 22, Dim, new Vector2(0, y), TextAnchor.MiddleCenter);
             y -= 60;
-            Label(canvasGo.transform, font, "HR", 22, Dim, new Vector2(-95, y), TextAnchor.MiddleLeft);
+            Label(canvasGo.transform, font, "CORE", 22, Dim, new Vector2(-95, y), TextAnchor.MiddleLeft);
             heartRate = Label(canvasGo.transform, font, "72", 64, Teal, new Vector2(30, y), TextAnchor.MiddleRight);
-            Label(canvasGo.transform, font, "bpm", 18, Dim, new Vector2(105, y - 10), TextAnchor.MiddleLeft);
+            Label(canvasGo.transform, font, "ppm", 18, Dim, new Vector2(105, y - 10), TextAnchor.MiddleLeft);
             y -= 120;
 
             // ECG trace
@@ -80,9 +81,9 @@ namespace FortressUnited.Game
             ecgGo.transform.localPosition = new Vector3(0, y, 0);
             y -= 120;
 
-            spo2 = Row(canvasGo.transform, font, "SpO₂", ref y);
+            spo2 = Row(canvasGo.transform, font, "SEAL", ref y);
             temp = Row(canvasGo.transform, font, "TEMP", ref y);
-            bp = Row(canvasGo.transform, font, "BP", ref y);
+            bp = Row(canvasGo.transform, font, "PWR", ref y);
 
             y -= 30;
             var bar = new GameObject("StatusBar", typeof(Image));
@@ -92,7 +93,7 @@ namespace FortressUnited.Game
             statusBar.color = new Color(0.1f, 0.4f, 0.4f, 0.6f);
             ((RectTransform)bar.transform).sizeDelta = new Vector2(Width - 30, 54);
             bar.transform.localPosition = new Vector3(0, y, 0);
-            status = Label(canvasGo.transform, font, "STABLE", 26, Teal, new Vector2(0, y), TextAnchor.MiddleCenter);
+            status = Label(canvasGo.transform, font, "NOMINAL", 26, Teal, new Vector2(0, y), TextAnchor.MiddleCenter);
         }
 
         Text Row(Transform parent, Font font, string name, ref float y)
@@ -140,18 +141,45 @@ namespace FortressUnited.Game
             spo2.color = Vitals.SpO2 < 90 ? Alarm : Vitals.SpO2 < 95 ? Warn : Teal;
             temp.text = $"{Vitals.Temperature:0.0}°C";
             temp.color = Vitals.Temperature > 39 ? Alarm : Vitals.Temperature > 37.5f ? Warn : Teal;
-            bp.text = Vitals.Dead ? "--/--" : $"{Vitals.Systolic}/{Vitals.Diastolic}";
+            bp.text = Vitals.Dead ? "--" : $"{Mathf.RoundToInt(Vitals.Health / Vitals.MaxHealth * 100)}%";
 
             string st = Vitals.Status;
             status.text = st;
-            bool alarm = st == "FLATLINE" || st == "BURNING" || st == "CRITICAL" || st == "HYPOXIA";
-            bool warn = st == "CONCUSSED" || st == "INFECTED" || st == "MAX EFFORT" || st == "ELEVATED";
+            bool alarm = st == "OFFLINE" || st == "OVERHEATING" || st == "CRITICAL" || st == "WATER INGRESS";
+            bool warn = st == "SYSTEM GLITCH" || st == "VIRUS DETECTED" || st == "MAX OUTPUT" || st == "ELEVATED";
             Color c = alarm ? Alarm : warn ? Warn : Teal;
             // Alarms blink
             if (alarm && Mathf.Repeat(Time.time, 0.8f) > 0.5f)
                 c *= 0.45f;
             status.color = c;
             statusBar.color = new Color(c.r * 0.3f, c.g * 0.3f, c.b * 0.3f, 0.7f);
+
+            Corrupt();
+        }
+
+        static readonly string Junk = "#$%&@!?/\\<>01ERR";
+        static readonly Color VirusGreen = new Color(0.4f, 1f, 0.5f);
+
+        /// <summary>Glitch or virus: the odd reading turns to garbage for a frame.</summary>
+        void Corrupt()
+        {
+            float glitch = Vitals.Concussion / 100f;
+            float virus = Vitals.Infected ? 0.6f : 0;
+            float chance = Mathf.Max(glitch, virus) * Time.deltaTime * 6;
+            if (chance <= 0)
+                return;
+            foreach (var t in new[] { heartRate, spo2, temp, bp, status })
+            {
+                if (Random.value >= chance)
+                    continue;
+                var chars = t.text.ToCharArray();
+                for (int i = 0; i < chars.Length; i++)
+                    if (Random.value < 0.5f)
+                        chars[i] = Junk[Random.Range(0, Junk.Length)];
+                t.text = new string(chars);
+                if (virus > 0)
+                    t.color = VirusGreen;
+            }
         }
 
         void OnDestroy()

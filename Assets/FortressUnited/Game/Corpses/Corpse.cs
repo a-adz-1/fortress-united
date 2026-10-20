@@ -5,16 +5,19 @@ using UnityEngine.Rendering;
 namespace FortressUnited.Game
 {
     /// <summary>
-    /// A body after death. It ragdolls, then freezes once it has settled (or
+    /// A robot's body after it's destroyed. It ragdolls, sparking and
+    /// glitching as it powers down, then freezes once it has settled (or
     /// after a few seconds regardless), so it never jitters or hangs off
-    /// ledges in odd poses for long. After Lifetime seconds it fades out and
-    /// is removed. Only MaxBodies stay at once; the oldest fades early.
-    /// A chest screen shows the last heartbeats running down to a flat line.
+    /// ledges in odd poses for long. After Lifetime seconds it beams out and
+    /// is removed. Only MaxBodies stay at once; the oldest beams out early.
+    /// A chest screen shows the last core pulses running down to a flat line.
     /// </summary>
     public sealed class Corpse : MonoBehaviour
     {
         public float Lifetime = 20;
         public float FadeSeconds = 1.5f;
+        [Tooltip("Sparking and glitching while it powers down.")]
+        public float PowerDownSeconds = 3;
         [Tooltip("Freeze when every part is slower than this (m/s) ...")]
         public float SettleSpeed = 0.12f;
         [Tooltip("... for this long.")]
@@ -32,6 +35,9 @@ namespace FortressUnited.Game
         bool frozen;
         EcgTrace ecg;
         Material screenMaterial;
+        RobotFx fx;
+        float nextSpark;
+        Light beamLight;
         readonly List<Material> fadeMaterials = new List<Material>();
         readonly List<Color> baseColours = new List<Color>();
 
@@ -51,6 +57,13 @@ namespace FortressUnited.Game
                 rb.linearVelocity = velocity;
             // A little spin so bodies don't fall like planks
             bones.Spine.GetComponent<Rigidbody>().AddTorque(Random.insideUnitSphere * 8, ForceMode.VelocityChange);
+
+            c.fx = character.GetComponent<RobotFx>();
+            if (c.fx != null)
+            {
+                c.fx.SparkBurst(40);
+                c.fx.Glitch = 1;
+            }
 
             c.Vitals = new PlayerVitals { Health = 0 };
             c.Vitals.Dead = true;
@@ -89,6 +102,20 @@ namespace FortressUnited.Game
             Vitals.Update(Time.deltaTime);
             ecg?.Step(Vitals, Time.deltaTime);
 
+            // Powering down: sparks and glitching that die away
+            if (fx != null && age < PowerDownSeconds)
+            {
+                float left = 1 - age / PowerDownSeconds;
+                fx.Glitch = left;
+                if (age >= nextSpark)
+                {
+                    fx.SparkBurst(Mathf.RoundToInt(Random.Range(4, 14) * left));
+                    nextSpark = age + Random.Range(0.15f, 0.6f) / Mathf.Max(0.2f, left);
+                }
+            }
+            else if (fx != null && fade < 0)
+                fx.Glitch = 0;
+
             if (!frozen)
             {
                 bool still = true;
@@ -106,7 +133,12 @@ namespace FortressUnited.Game
                 if (fade == 0)
                     PrepareFade();
                 fade += Time.deltaTime / FadeSeconds;
-                float alpha = 1 - Mathf.Clamp01(fade);
+                // Beam out: the band sweeps up while the armour fades behind it
+                if (fx != null)
+                    fx.Teleport = Mathf.Clamp01(fade);
+                if (beamLight != null)
+                    beamLight.intensity = 3 * Mathf.Sin(Mathf.Clamp01(fade) * Mathf.PI);
+                float alpha = 1 - Mathf.Clamp01((fade - 0.2f) / 0.8f);
                 for (int i = 0; i < fadeMaterials.Count; i++)
                 {
                     var c = baseColours[i];
@@ -133,20 +165,33 @@ namespace FortressUnited.Game
         void PrepareFade()
         {
             fade = 0.0001f;
-            var ripple = GetComponent<HitRipple>();
-            if (ripple != null)
-                Destroy(ripple);
+            if (fx != null)
+            {
+                fx.Glitch = 0;
+                var lightGo = new GameObject("Beam Light");
+                lightGo.transform.SetParent(transform, false);
+                lightGo.transform.position = bodies[0].position + Vector3.up * 0.3f;
+                beamLight = lightGo.AddComponent<Light>();
+                beamLight.type = LightType.Point;
+                beamLight.color = fx.Colour;
+                beamLight.range = 3;
+                beamLight.intensity = 0;
+                beamLight.shadows = LightShadows.None;
+            }
             foreach (var r in GetComponentsInChildren<Renderer>())
             {
+                if (r is ParticleSystemRenderer)
+                    continue;
                 r.shadowCastingMode = ShadowCastingMode.Off;
-                // Drop the shield ripple layer, then fade instances of the rest
-                var keep = new List<Material>();
-                foreach (var m in r.sharedMaterials)
-                    if (m != null && m.shader.name != "FortressUnited/ShieldRipple")
-                        keep.Add(m);
-                r.sharedMaterials = keep.ToArray();
-                foreach (var m in r.materials)   // instances, so other bodies aren't affected
+                // Fade copies of the body's own materials (so other bodies aren't
+                // affected); the robot overlay stays shared so RobotFx drives it
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
                 {
+                    var m = mats[i];
+                    if (m == null || m.shader.name == RobotFx.ShaderName)
+                        continue;
+                    m = mats[i] = new Material(m);
                     if (m.HasProperty("_Surface"))
                     {
                         m.SetFloat("_Surface", 1);
@@ -161,6 +206,7 @@ namespace FortressUnited.Game
                     fadeMaterials.Add(m);
                     baseColours.Add(m.color);
                 }
+                r.sharedMaterials = mats;
             }
         }
 
