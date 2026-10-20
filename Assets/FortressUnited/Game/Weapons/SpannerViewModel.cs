@@ -51,9 +51,10 @@ namespace FortressUnited.Game
         }
 
         /// <summary>
-        /// The spy's killswitch spike: held like a dagger, pointing forward; its
-        /// glass tip flashes (a short crackle at the tip) when a strike lands,
-        /// e.g. jacking into a robot's back to shut it down.
+        /// The spy's killswitch spike: held like a dagger, pointing forward. No
+        /// sparks: when a strike lands its glass blade flares bright and fades,
+        /// the hack running through it (e.g. jacking into a robot's back to shut
+        /// it down).
         /// </summary>
         public static SpannerViewModel CreateKillswitch(GameObject prefab, Camera cam, PlayerController player, Color team, Texture2D teamSkin)
         {
@@ -65,10 +66,16 @@ namespace FortressUnited.Game
             vm.pivot.localPosition = vm.GripOffset;
             vm.pivot.localRotation = Quaternion.Euler(vm.HoldAngles);
             vm.Reach = 1.0f;
+            // No arc at all; the blade's own glow flares instead
+            if (Application.isPlaying) Destroy(vm.Arc); else DestroyImmediate(vm.Arc);
+            vm.Arc = null;
+            vm.flashColour = team;
             return vm;
         }
 
         bool zapOnly;
+        Color? flashColour;     // set for blades that flare on a hit instead of arcing
+        float flash, flashWas;
 
         public static SpannerViewModel Create(GameObject prefab, Camera cam, PlayerController player, Color arcColor, string name = "Spanner (view model)")
         {
@@ -122,6 +129,7 @@ namespace FortressUnited.Game
                 sentry.Fx?.Hit(hit.point, 6);
                 SentryGun.OnSpanner?.Invoke(sentry);
                 Arc?.Surge(1.5f);
+                flash = 1;
                 return;
             }
             var target = hit.collider.GetComponentInParent<RobotFx>();
@@ -130,6 +138,7 @@ namespace FortressUnited.Game
             if (hit.rigidbody != null && !hit.rigidbody.isKinematic)
                 hit.rigidbody.AddForceAtPosition(cam.forward * 3, hit.point, ForceMode.VelocityChange);
             Arc?.Surge(1.5f);
+            flash = 1;
         }
 
         Vector3 Local(Transform t) => model.InverseTransformPoint(t.position);
@@ -144,6 +153,16 @@ namespace FortressUnited.Game
 
         void Update()
         {
+            // Blade flare: bright on a hit, back to its normal glow in about a third of a second
+            if (flashColour.HasValue && (flash > 0 || flashWas > 0))
+            {
+                flash = Mathf.MoveTowards(flash, 0, Time.deltaTime * 3);
+                var c = TeamColours.Glow(flashColour.Value, 1.6f + 10f * flash * flash);
+                foreach (var r in model.GetComponentsInChildren<Renderer>())
+                    foreach (var m in r.materials)
+                        m.SetColor("_EmissionColor", c);
+                flashWas = flash;
+            }
             var mouse = Mouse.current;
             if (mouse != null && mouse.leftButton.wasPressedThisFrame && Cursor.lockState == CursorLockMode.Locked)
                 Swing();
