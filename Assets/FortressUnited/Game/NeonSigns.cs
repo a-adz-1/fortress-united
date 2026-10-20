@@ -70,6 +70,16 @@ namespace FortressUnited.Game
             float angle = !arrow ? 0 : ArrowAngles.TryGetValue(name, out var known) ? known : ArrowAngle(rgba, w, h);
 
             int W = Mathf.Clamp(w * 8, 256, 1024), H = Mathf.Clamp(h * 8, 128, 1024);
+            return DrawText(words, neon, W, H, angle, arrow, name);
+        }
+
+        /// <summary>
+        /// Draws any wording as neon (a mapper's fu_sign, or a standard sign) into a
+        /// W x H texture; "->" in the wording becomes an arrow. Ready a couple of frames later.
+        /// </summary>
+        public static Texture2D DrawText(string words, Color neon, int W, int H, float angle = 0, bool arrow = false, string name = "fu_sign")
+        {
+            words = words.Replace("->", Arrow).Replace("\\n", "\n");
             var rt = new RenderTexture(W, H, 16, RenderTextureFormat.ARGB32)
             {
                 name = "Neon " + name,

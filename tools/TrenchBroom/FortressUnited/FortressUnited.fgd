@@ -184,7 +184,30 @@
 	message(string) : "Map title"
 	skyname(string) : "Sky name"
 	light(integer) : "Default light level"
-	fu_theme(choices) : "FU: material theme" : "default" =
+	fu_restyle(choices) : "FU: restyle the map's textures" : 1 =
+	[
+		1 : "Yes (the Fortress United look)"
+		0 : "No (keep the map's own textures; lighting and extras still apply)"
+	]
+	fu_time(choices) : "FU: time of day" : "day" =
+	[
+		"day" : "Day"
+		"dusk" : "Dusk"
+		"night" : "Night"
+	]
+	fu_sun(string) : "FU: sun angle 'pitch yaw' (overrides light_environment)"
+	fu_suncolor(color255) : "FU: sun colour"
+	fu_fog(string) : "FU: fog density (0 = none)" : "0.0025"
+	fu_signs(choices) : "FU: sign style" : "neon" =
+	[
+		"neon" : "Neon (re-lettered)"
+		"hologram" : "Hologram (traced from the sign art)"
+	]
+	fu_ribs(choices) : "FU: automatic corridor ribs" : 1 = [ 1 : "On" 0 : "Off" ]
+	fu_rails(choices) : "FU: automatic railings" : 1 = [ 1 : "On" 0 : "Off" ]
+	fu_frames(choices) : "FU: automatic door frames" : 1 = [ 1 : "On" 0 : "Off" ]
+	fu_screens(choices) : "FU: automatic wall screens" : 1 = [ 1 : "On" 0 : "Off" ]
+	fu_theme(choices) : "FU: material theme (reserved)" : "default" =
 	[
 		"default" : "Default"
 		"castle" : "Castle / fort"
@@ -324,6 +347,36 @@
 @SolidClass base(Targetname, Team) = func_spawnguard : "FU: kills enemies of the team that enter (spawn doorways)"
 [
 	message(string) : "Message to players it kills"
+]
+
+// ---------------------------------------------------------------------------
+// Fortress United look (docs/mapping-guide.md)
+
+@PointClass base(Team) size(-8 -8 -8, 8 8 8) color(0 220 255) = fu_sign : "FU: neon sign (faces its angle)"
+[
+	text(string) : "Text (\\n for a new line, -> for an arrow)" : "SIGN"
+	angles(string) : "Pitch Yaw Roll (yaw = the way it faces)" : "0 0 0"
+	height(integer) : "Height (units)" : 32
+	rendercolor(color255) : "Colour (blank = team colour, or cyan)"
+	backing(choices) : "Dark backing panel" : 1 = [ 1 : "Yes" 0 : "No (letters straight on the wall)" ]
+]
+
+@PointClass base(Team) size(-8 -8 -8, 8 8 8) color(0 160 255) = fu_screen : "FU: live match screen (placing any turns off automatic screens)"
+[
+	angles(string) : "Pitch Yaw Roll (yaw = the way it faces)" : "0 0 0"
+	width(integer) : "Width (units)" : 64
+]
+
+@SolidClass base(Team) = fu_teamzone : "FU: this volume is a team's base (team colours, light tint, screens)"
+[
+]
+
+@SolidClass = fu_norail : "FU: no automatic railings in this volume"
+[
+]
+
+@SolidClass = fu_nodetail : "FU: no automatic railings, ribs or door frames in this volume"
+[
 ]
 
 // ---------------------------------------------------------------------------

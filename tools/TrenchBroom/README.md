@@ -7,8 +7,14 @@ The entity definitions use Team Fortress Classic's map format (goal
 entities, keys, short aliases and flag bits exactly as TFC's game code reads
 them; checked against the reconstructed TFC source), so TFC mappers'
 knowledge and existing TFC maps carry over. Fortress United additions:
-`worldspawn` key `fu_theme` (material theme for the importer) and
-`func_spawnguard` (spawn protection volume).
+`worldspawn` look settings (`fu_restyle`, `fu_time`, `fu_sun`, `fu_fog`,
+`fu_signs`...), the `fu_sign`, `fu_screen`, `fu_teamzone`, `fu_norail` and
+`fu_nodetail` entities, and `func_spawnguard` (spawn protection volume).
+`fortress_united.wad` holds the `fu_` textures. All of it is explained in
+[docs/mapping-guide.md](../../docs/mapping-guide.md).
+
+The FGD is in Hammer's format, so it also works in J.A.C.K. and Valve
+Hammer Editor 3.5: add it as a game data file there.
 
 ## Install
 

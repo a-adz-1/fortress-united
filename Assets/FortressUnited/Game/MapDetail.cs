@@ -42,7 +42,10 @@ namespace FortressUnited.Game
             glow = new Batch[5];
             for (int i = 0; i < 5; i++) glow[i] = new Batch();
 
-            int ribs = Ribs(map), rails = Railings(map), doors = DoorFrames(map);
+            var settings = MapSettings.Current;
+            int ribs = settings.Ribs ? Ribs(map) : 0;
+            int rails = settings.Rails ? Railings(map) : 0;
+            int doors = settings.Frames ? DoorFrames(map) : 0;
 
             var root = new GameObject("Structural Detail").transform;
             root.SetParent(map.transform, false);
@@ -142,6 +145,7 @@ namespace FortressUnited.Game
                     if (!Corridor(at, axis, side, out left, out right, out ceiling))
                         continue;
                     placed.Add(key);
+                    if (MapEntities.In(MapEntities.NoDetail, at)) continue;
                     Rib(at, axis, side, left, right, ceiling, floor.y);
                     count++;
                 }
@@ -239,6 +243,7 @@ namespace FortressUnited.Game
                     while (s0 < len && !Ledge(a + dir * (s0 + 0.2f), outward)) s0 += 0.5f;
                     while (s1 > s0 && !Ledge(a + dir * (s1 - 0.2f), outward)) s1 -= 0.5f;
                     if (s1 - s0 < 0.8f) continue;
+                    if (MapEntities.In(MapEntities.NoRail, (a + b) * 0.5f + Vector3.up * 0.5f)) continue;
                     Rail(a + dir * s0, a + dir * s1, outward);
                     runs++;
                 }
@@ -329,6 +334,7 @@ namespace FortressUnited.Game
             }
             foreach (var b in doors)
             {
+                if (MapEntities.In(MapEntities.NoDetail, b.center)) continue;
                 Vector3 s = b.size;
                 if (s.y < 1.6f || s.y > 8f) continue;                         // lifts and platforms aren't doorways
                 bool alongX = s.x >= s.z;

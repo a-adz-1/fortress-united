@@ -110,6 +110,7 @@ namespace FortressUnited.Game
                     return;
                 case "glass": MakeGlass(mat, team); return;
                 case "logo": MakeLogo(mat, team); return;
+                case "screen": MakeScreenFace(mat, team); return;
             }
             if (string.IsNullOrEmpty(id) || !library.TryGetValue(id, out var entry) || original == null)
                 return;
@@ -442,6 +443,20 @@ namespace FortressUnited.Game
             mat.EnableKeyword("_EMISSION");
             mat.SetTexture("_EmissionMap", tex);
             mat.SetColor("_EmissionColor", Color.white * 1.5f);
+        }
+
+        /// <summary>A mapper's screen face (fu_scr_&lt;team&gt;): the team's live match feed, fitted to the face.</summary>
+        static void MakeScreenFace(Material mat, string team)
+        {
+            var t = TeamOf(team) ?? TeamColours.Team.Blue;
+            var feed = MapScreens.FeedTexture((int)t - 1);
+            mat.shader = Shader.Find("Universal Render Pipeline/Unlit");
+            mat.SetTexture("_BaseMap", feed);
+            mat.mainTexture = feed;
+            mat.SetColor("_BaseColor", Color.white * 1.6f);
+            // Rendered images run bottom to top; map textures top to bottom
+            mat.SetTextureScale("_BaseMap", new Vector2(1, -1));
+            mat.SetTextureOffset("_BaseMap", new Vector2(0, 1));
         }
 
         /// <summary>Windows: tinted, see-through and glossy.</summary>

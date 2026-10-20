@@ -48,6 +48,7 @@ namespace FortressUnited.EditorTools
             d.MeleeShowcase = System.Environment.GetEnvironmentVariable("DEMO_MODE") == "melee";
             d.LookTour = System.Environment.GetEnvironmentVariable("DEMO_MODE") == "look";
             d.OriginalTextures = System.Environment.GetEnvironmentVariable("DEMO_MATERIALS") == "off";
+            d.KeepTextures = System.Environment.GetEnvironmentVariable("DEMO_MATERIALS") == "keep";
             // DEMO_SIZE=2560x1440 renders bigger (scale it down when encoding, for smoother edges)
             var size = System.Environment.GetEnvironmentVariable("DEMO_SIZE");
             if (!string.IsNullOrEmpty(size) && size.Contains("x"))

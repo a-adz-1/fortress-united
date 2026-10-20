@@ -32,11 +32,42 @@ namespace FortressUnited.Game
 
         readonly List<Feed> feeds = new List<Feed>();
 
+        static MapScreens shared;
+
+        /// <summary>The one host for all the feeds and screens (made on first use).</summary>
+        static MapScreens Shared()
+        {
+            if (shared == null)
+                shared = new GameObject("Wall Screens").AddComponent<MapScreens>();
+            return shared;
+        }
+
+        /// <summary>A team's live feed, for a mapper's screen face (fu_scr_&lt;team&gt; texture).</summary>
+        public static RenderTexture FeedTexture(int team) => Shared().FeedOf(team).Texture;
+
+        Feed FeedOf(int team)
+        {
+            foreach (var f in feeds)
+                if (f.Team == team) return f;
+            return MakeFeed(team);
+        }
+
         public static MapScreens Place(MapLoader map)
         {
             Placed.Clear();
-            var host = new GameObject("Wall Screens").AddComponent<MapScreens>();
+            var host = Shared();
             host.transform.SetParent(map.transform, false);
+            // A mapper's own screens (fu_screen) replace the automatic ones
+            var mapperScreens = MapEntities.Screens(map);
+            if (mapperScreens.Count > 0)
+            {
+                foreach (var (pos, facing, team, width) in mapperScreens)
+                    host.MakeScreen(host.FeedOf(team), pos, facing, width / ScreenWidth);
+                Debug.Log($"Fortress United: {Placed.Count} wall screens (placed by the mapper)");
+                return host;
+            }
+            if (!MapSettings.Current.Screens)
+                return host;
             for (int t = 0; t < 4; t++)
             {
                 if (MapLights.TeamCentres[t].w < 0.5f)
@@ -44,7 +75,7 @@ namespace FortressUnited.Game
                 var spots = host.FindSpots(map, t);
                 if (spots.Count == 0)
                     continue;
-                var feed = host.MakeFeed(t);
+                var feed = host.FeedOf(t);
                 foreach (var (pos, normal) in spots)
                     host.MakeScreen(feed, pos, normal);
             }
@@ -130,10 +161,11 @@ namespace FortressUnited.Game
             return true;
         }
 
-        void MakeScreen(Feed feed, Vector3 pos, Vector3 normal)
+        void MakeScreen(Feed feed, Vector3 pos, Vector3 normal, float scale = 1)
         {
             var root = new GameObject("Screen").transform;
             root.SetParent(transform, false);
+            root.localScale = Vector3.one * scale;
             root.position = pos + normal * 0.01f;
             root.rotation = Quaternion.LookRotation(normal, Vector3.up);   // forward out of the wall
 
@@ -163,11 +195,11 @@ namespace FortressUnited.Game
             // The screen's glow on the wall and floor around it
             var light = new GameObject("Glow").AddComponent<Light>();
             light.transform.SetParent(root, false);
-            light.transform.localPosition = new Vector3(0, -0.1f, 0.6f);
+            light.transform.localPosition = new Vector3(0, -0.1f, 0.9f);
             light.type = LightType.Point;
             light.color = Color.Lerp(Color.white, TeamColours.For((TeamColours.Team)(feed.Team + 1)), 0.6f);
             light.range = 3f;
-            light.intensity = 0.9f;
+            light.intensity = 0.45f;
             light.shadows = LightShadows.None;
             Placed.Add(root);
         }

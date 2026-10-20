@@ -46,6 +46,7 @@ namespace FortressUnited.Game
             "trigger_multiple", "trigger_once", "trigger_push", "trigger_hurt", "trigger_teleport",
             "trigger_changelevel", "trigger_gravity", "trigger_transition", "func_ladder", "func_nobuild",
             "func_nogrenades", "func_spawnguard", "i_t_g", "info_tfgoal", "func_friction",
+            "fu_teamzone", "fu_norail", "fu_nodetail",
         };
 
         readonly Dictionary<int, Material> materials = new Dictionary<int, Material>();
@@ -63,8 +64,14 @@ namespace FortressUnited.Game
             Bsp = BspFile.Load(path);
             TJunctions.Fix(Bsp);       // close the hairline cracks between polygons
             World = new BspWorld(Bsp);
+            // The mapper's look settings (worldspawn fu_* keys)
+            MapSettings.Current = MapSettings.From(Bsp);
+            if (!MapSettings.Current.Restyle)
+                UseWorldMaterials = false;
+            WorldMaterials.SignStyle = MapSettings.Current.Signs;
 
             var folders = new List<string>(WadFolders);
+            folders.Add(Application.streamingAssetsPath);       // fortress_united.wad, the mappers' fu_ textures
             string mapsDir = Path.GetDirectoryName(path);
             string gameDir = Path.GetDirectoryName(mapsDir);
             if (gameDir != null)
@@ -164,7 +171,7 @@ namespace FortressUnited.Game
             // Logos are fitted to each face (centred, aspect kept) rather than tiled the old way
             string look = UseWorldMaterials ? WorldMaterials.ModeOf(texture.Name) : null;
             bool fit = look == "logo";
-            bool stretch = look == "light" || look == "sign";      // light panels and signs fill their face
+            bool stretch = look == "light" || look == "sign" || look == "screen";      // light panels, signs and screens fill their face
             var verts = new List<Vector3>();
             var norms = new List<Vector3>();
             var uvs = new List<Vector2>();
@@ -176,7 +183,7 @@ namespace FortressUnited.Game
             // Lights, signs and logos are often thin brushes laid flush on a wall or ceiling;
             // drawn at the same depth they flicker against it, so they sit 4 mm proud
             string mode = UseWorldMaterials ? WorldMaterials.ModeOf(texture.Name) : null;
-            bool decal = mode == "light" || mode == "sign" || mode == "logo";
+            bool decal = mode == "light" || mode == "sign" || mode == "logo" || mode == "screen";
             for (int fi = 0; fi < faces.Count; fi++)
             {
                 var f = faces[fi];

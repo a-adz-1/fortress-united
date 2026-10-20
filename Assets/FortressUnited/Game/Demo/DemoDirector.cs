@@ -33,6 +33,8 @@ namespace FortressUnited.Game
         public bool LookTour;
         [Tooltip("Draw the map with its original textures (for before/after).")]
         public bool OriginalTextures;
+        [Tooltip("Keep the map's own textures but give it the new lighting, atmosphere, screens and detail.")]
+        public bool KeepTextures;
         [Tooltip("Where to stage: \"open\" (the most open outdoor area) or \"spawn\" (a roomy team spawn room).")]
         public string Stage = "open";
         public GameObject Arms, ShockProd, Killswitch;
@@ -75,7 +77,7 @@ namespace FortressUnited.Game
 
             var loader = gameObject.AddComponent<MapLoader>();
             loader.MapPath = MapPath;
-            loader.UseWorldMaterials = !OriginalTextures;
+            loader.UseWorldMaterials = !OriginalTextures && !KeepTextures;
             if (!loader.Load())
             {
                 Debug.LogError("Demo: map didn't load");
@@ -545,6 +547,17 @@ namespace FortressUnited.Game
                 shot = time => (from - scr.right * time * 0.35f, at);
                 shotStart = Time.time;
                 yield return new WaitForSeconds(3f);
+            }
+
+            // Mapper signs (fu_sign), close up
+            int signShots = 0;
+            foreach (Transform t in GetComponent<MapLoader>().transform)
+            {
+                if (!t.name.StartsWith("fu_sign") || signShots++ >= 2) continue;
+                Vector3 at = t.position, from = t.position + t.forward * 2.5f + t.right * 0.8f;
+                shot = time => (from - t.right * time * 0.3f, at);
+                shotStart = Time.time;
+                yield return new WaitForSeconds(2.5f);
             }
 
             // Inside each base: from a spawn point, looking where players face, then back

@@ -13,6 +13,7 @@ Modes (the futuristic look):
 - replace: a PBR material tinted to the old texture's colour (rock, ground,
   sand, snow: natural surfaces)
 - logo: our team logo glowing on a dark panel (TFC's team emblems)
+- screen: a live match screen showing the team's feed (fu_scr_<team>)
 - light: the old texture glowing (light fixtures); sign: the old texture,
   softly lit like a screen; glass: see-through; keep: unchanged
   (see-through grates, special textures); water is chosen by the game ('!')
@@ -48,8 +49,8 @@ METALLIC = ("door", "trim/edge", "tech/computer", "metal")
 def style(name, category, material, mode):
     """The futuristic look's mode for a texture, from what it is."""
     n = name.lower()
-    if mode == "logo":
-        return "logo"
+    if mode in ("logo", "screen"):
+        return mode
     if category == "light" or "~" in n or n.startswith("light"):
         return "light"
     if category == "sign/decal" or n.startswith(("sign", "exit", "team")):
@@ -91,13 +92,18 @@ def main():
             m = {"stone/rock": "Rock030", "ground/terrain": "Ground048"}.get(r["category"], "Rock030")
         counts[mode] = counts.get(mode, 0) + 1
         out.append((name, m, mode, team))
+    # Textures from overrides.csv that no inventoried map uses yet (the fu_ set for mappers)
+    seen = {o[0] for o in out}
+    for name, (m, mode, team) in over.items():
+        if name not in seen:
+            out.append((name, m, mode, team))
+            counts[mode] = counts.get(mode, 0) + 1
     dst = os.path.join(ROOT, "Assets", "FortressUnited", "Resources", "MapMaterials.csv")
     with open(dst, "w") as f:
         f.write("texture,material,mode,team\n")
         for t, m, mode, team in sorted(set(out)):
             f.write(f"{t},{m},{mode},{team}\n")
-    missing = [t for t in over if t not in {o[0] for o in out}]
-    print(f"wrote {dst}: {len(out)} textures {counts}; overrides not in the inventory: {missing}")
+    print(f"wrote {dst}: {len(out)} textures {counts}")
 
 
 if __name__ == "__main__":

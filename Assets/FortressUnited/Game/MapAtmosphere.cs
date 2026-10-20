@@ -9,7 +9,8 @@ namespace FortressUnited.Game
     /// rooms lit by their own fixtures on top (MapLights),
     /// and reflections captured from the map itself (a cubemap rendered from
     /// its middle), so glossy panels and water reflect the map and sky.
-    /// Per-map themes (night, snow, desert) come later.
+    /// Mappers choose the time of day and override the sun and fog with
+    /// worldspawn keys (MapSettings).
     /// </summary>
     public static class MapAtmosphere
     {
@@ -41,16 +42,54 @@ namespace FortressUnited.Game
             RenderSettings.fogMode = FogMode.Exponential;
             RenderSettings.fogDensity = 0.0025f;
             RenderSettings.fogColor = new Color(0.66f, 0.74f, 0.86f);
+
+            var settings = MapSettings.Current;
+            if (settings.Time == "dusk") Dusk(sun, sky);
+            else if (settings.Time == "night") Night(sun, sky);
+            RenderSettings.fogDensity = settings.Fog * (settings.Time == "dusk" ? 1.5f : 1);
+            RenderSettings.fog = settings.Fog > 0;
             DynamicGI.UpdateEnvironment();
 
             if (map != null)
             {
+                MapEntities.ReadVolumes(map);
                 MapLights.Build(map, sun);
+                if (settings.Time == "dusk")
+                    sun.transform.rotation = Quaternion.Euler(Mathf.Min(sun.transform.eulerAngles.x, 14), sun.transform.eulerAngles.y, 0);
+                MapEntities.BuildSigns(map);
                 MapScreens.Place(map);
                 MapDetail.Build(map);
                 CaptureReflections(map.transform);
             }
             return sun;
+        }
+
+        /// <summary>Dusk: a low warm sun, a violet sky, long shadows, rooms carried by their fixtures.</summary>
+        static void Dusk(Light sun, Material sky)
+        {
+            sun.color = new Color(1f, 0.6f, 0.38f);
+            sun.intensity = 1.4f;
+            sky.SetColor("_SkyTint", new Color(0.6f, 0.42f, 0.55f));
+            sky.SetFloat("_AtmosphereThickness", 1.7f);
+            sky.SetFloat("_Exposure", 1.0f);
+            RenderSettings.ambientSkyColor = new Color(0.36f, 0.3f, 0.42f);
+            RenderSettings.ambientEquatorColor = new Color(0.26f, 0.21f, 0.26f);
+            RenderSettings.ambientGroundColor = new Color(0.08f, 0.07f, 0.08f);
+            RenderSettings.fogColor = new Color(0.62f, 0.46f, 0.48f);
+        }
+
+        /// <summary>Night: a cool dim moon, a dark sky; the glows, signs and fixtures light the map.</summary>
+        static void Night(Light sun, Material sky)
+        {
+            sun.color = new Color(0.55f, 0.66f, 1f);
+            sun.intensity = 0.35f;
+            sky.SetColor("_SkyTint", new Color(0.2f, 0.25f, 0.45f));
+            sky.SetFloat("_Exposure", 0.18f);
+            sky.SetFloat("_SunSize", 0.02f);
+            RenderSettings.ambientSkyColor = new Color(0.07f, 0.09f, 0.16f);
+            RenderSettings.ambientEquatorColor = new Color(0.05f, 0.055f, 0.09f);
+            RenderSettings.ambientGroundColor = new Color(0.02f, 0.02f, 0.03f);
+            RenderSettings.fogColor = new Color(0.05f, 0.06f, 0.11f);
         }
 
         /// <summary>Renders the map and sky into a cubemap from the map's middle and uses it for reflections.</summary>

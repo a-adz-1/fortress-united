@@ -126,3 +126,45 @@ glassblue1,,keep
 # TFC's team emblems: our team logos, glowing (fitted to each face by the loader)
 team1a,,logo,blue
 team2a,,logo,red
+moon,,keep
+# Fortress United textures for mappers (tools/maps/fortress_united.wad; docs/mapping-guide.md).
+# Built surfaces: the shader works out wall, floor and ceiling from each face's direction.
+fu_panel,Concrete036,panel
+fu_panel_dark,Concrete031,panel
+fu_metal,Metal046B,metal
+fu_trim,Metal046B,metal
+fu_team_blue,Concrete031,panel,blue
+fu_team_red,Concrete031,panel,red
+fu_team_gold,Concrete031,panel,gold
+fu_team_violet,Concrete031,panel,violet
+fu_light_white,,light
+fu_light_warm,,light
+fu_light_cool,,light
+fu_light_blue,,light
+fu_light_red,,light
+fu_light_amber,,light
+fu_glass,,glass
+fu_glass_blue,,glass,blue
+fu_glass_red,,glass,red
+fu_logo_blue,,logo,blue
+fu_logo_red,,logo,red
+fu_logo_gold,,logo,gold
+fu_logo_violet,,logo,violet
+fu_scr_blue,,screen,blue
+fu_scr_red,,screen,red
+fu_scr_gold,,screen,gold
+fu_scr_violet,,screen,violet
+fu_rock,Rock030,replace
+fu_cliff,Rock029,replace
+fu_dirt,Ground048,replace
+fu_grass,Ground037,replace
+fu_sand,Ground054,replace
+fu_snow,Snow010A,replace
+fu_gravel,Gravel023,replace
+fu_asphalt,Asphalt031,replace
+fu_bricks,Bricks066,replace
+fu_wood,Wood051,replace
+{fu_grate,,keep
+!fu_water,,keep
+!fu_slime,,keep
+!fu_lava,,keep

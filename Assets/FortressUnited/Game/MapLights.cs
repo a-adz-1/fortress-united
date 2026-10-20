@@ -186,6 +186,9 @@ namespace FortressUnited.Game
         /// </summary>
         public static (int team, float weight) TeamAt(Vector3 p)
         {
+            int zone = MapEntities.ZoneTeam(p);          // a mapper's fu_teamzone wins
+            if (zone >= 0)
+                return (zone, 1);
             int best = -1, second = -1;
             float d1 = float.MaxValue, d2 = float.MaxValue;
             for (int t = 0; t < 4; t++)
@@ -218,6 +221,13 @@ namespace FortressUnited.Game
         {
             if (sun == null)
                 return;
+            var settings = MapSettings.Current;
+            if (settings.Sun.HasValue)
+            {
+                sun.transform.rotation = Quaternion.Euler(settings.Sun.Value.x, -settings.Sun.Value.y + 90, 0);
+                if (settings.SunColor.HasValue) sun.color = settings.SunColor.Value;
+                return;
+            }
             foreach (var e in bsp.Entities)
             {
                 if (e.ClassName != "light_environment")
@@ -231,6 +241,7 @@ namespace FortressUnited.Game
                 var l = ParseVec4(e.Get("_light"));
                 if (l.x + l.y + l.z > 0)
                     sun.color = Color.Lerp(sun.color, ToColour(new Vector3(l.x, l.y, l.z)), 0.12f);   // a hint of the map's sun colour, not its full tint
+                if (settings.SunColor.HasValue) sun.color = settings.SunColor.Value;
                 return;
             }
         }

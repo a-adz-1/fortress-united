@@ -58,11 +58,23 @@ Shader "FortressUnited/SciFiSurface"
             float4 _TeamCentres[4];
             float4 _TeamPaint[4];
             float4 _TeamGlow[4];
+            // Mapper team volumes (fu_teamzone): min, and max with w = team + 1 (0 unused)
+            float4 _TeamZoneMin[16];
+            float4 _TeamZoneMax[16];
 
             // Which team's base this point is in, and how surely (0 in the middle ground)
             void TeamAt(float3 p, out int team, out float weight)
             {
                 team = -1; weight = 0;
+                for (int z = 0; z < 16; z++)
+                {
+                    if (_TeamZoneMax[z].w < 0.5) continue;
+                    if (all(p >= _TeamZoneMin[z].xyz) && all(p <= _TeamZoneMax[z].xyz))
+                    {
+                        team = (int)_TeamZoneMax[z].w - 1; weight = 1;
+                        return;
+                    }
+                }
                 float d1 = 1e9, d2 = 1e9; int best = -1;
                 for (int t = 0; t < 4; t++)
                 {
