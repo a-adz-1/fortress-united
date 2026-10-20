@@ -106,9 +106,9 @@ babtech_ceil02,Metal046B,detail
 gatebluemetal,Metal046B,detail
 tnnl_flr6b,Metal046B,detail
 generic95c,Metal046B,detail
-out_wall6f,Metal046B,detail
-out_wall6e,Metal046B,detail
-out_wall6c2,Metal046B,detail
+out_wall6f,Concrete036,detail
+out_wall6e,Concrete036,detail
+out_wall6c2,Concrete036,detail
 lab1_door2a,Metal046B,detail
 generic015u,Metal046B,detail
 generic015n,Metal046B,detail

@@ -34,6 +34,31 @@ namespace FortressUnited.EditorTools
             Debug.Log("Fortress United: decal feature added to the renderer");
         }
 
+        /// <summary>Ambient occlusion: soft shadow in corners and along edges, so map geometry reads with depth.</summary>
+        static void AddAmbientOcclusion(UniversalRendererData data)
+        {
+            if (data == null || data.rendererFeatures.Exists(f => f is ScreenSpaceAmbientOcclusion))
+                return;
+            var feature = ScriptableObject.CreateInstance<ScreenSpaceAmbientOcclusion>();
+            feature.name = "Ambient Occlusion";
+            AssetDatabase.AddObjectToAsset(feature, data);
+            var fs = new SerializedObject(feature);
+            fs.FindProperty("m_Settings.Intensity").floatValue = 1.4f;
+            fs.FindProperty("m_Settings.Radius").floatValue = 0.45f;
+            fs.FindProperty("m_Settings.DirectLightingStrength").floatValue = 0.35f;
+            fs.FindProperty("m_Settings.Falloff").floatValue = 60f;
+            fs.ApplyModifiedPropertiesWithoutUndo();
+            data.rendererFeatures.Add(feature);
+            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out _, out long id);
+            var so = new SerializedObject(data);
+            var map = so.FindProperty("m_RendererFeatureMap");
+            map.arraySize++;
+            map.GetArrayElementAtIndex(map.arraySize - 1).longValue = id;
+            so.ApplyModifiedProperties();
+            EditorUtility.SetDirty(data);
+            Debug.Log("Fortress United: ambient occlusion added to the renderer");
+        }
+
         const string Folder = "Assets/FortressUnited/Settings";
         const string AssetPath = Folder + "/FortressUnited_URP.asset";
         const string RendererPath = Folder + "/FortressUnited_Renderer.asset";
@@ -56,6 +81,7 @@ namespace FortressUnited.EditorTools
             }
 
             AddDecals(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));
+            AddAmbientOcclusion(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));
 
             GraphicsSettings.defaultRenderPipeline = asset;
             int current = QualitySettings.GetQualityLevel();

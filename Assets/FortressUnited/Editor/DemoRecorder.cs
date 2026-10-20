@@ -28,6 +28,7 @@ namespace FortressUnited.EditorTools
             if (string.IsNullOrEmpty(output))
                 output = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fortress-united-demo");
 
+            RenderPipelineSetup.SetUp();      // makes sure the renderer has its features (decals, ambient occlusion)
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var d = new GameObject("Demo").AddComponent<DemoDirector>();
             d.MapPath = map;

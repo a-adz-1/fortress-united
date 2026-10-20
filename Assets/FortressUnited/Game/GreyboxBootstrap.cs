@@ -44,15 +44,7 @@ namespace FortressUnited.Game
                 return;
 
             if (FindAnyObjectByType<Light>() == null)
-            {
-                var sun = new GameObject("Sun").AddComponent<Light>();
-                sun.type = LightType.Directional;
-                sun.intensity = 1.1f;
-                sun.shadows = LightShadows.Soft;
-                sun.transform.rotation = Quaternion.Euler(50, -30, 0);
-                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-                RenderSettings.ambientLight = new Color(0.45f, 0.45f, 0.5f);
-            }
+                MapAtmosphere.Apply(loader);
 
             var spawns = loader.World.SpawnPoints(Team);
             var player = new GameObject("Player").AddComponent<PlayerController>();

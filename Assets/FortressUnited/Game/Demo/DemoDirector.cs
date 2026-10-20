@@ -82,19 +82,11 @@ namespace FortressUnited.Game
                 Quit();
                 return;
             }
-            // Light, sky and a camera with bloom
-            var sun = new GameObject("Sun").AddComponent<Light>();
-            sun.type = LightType.Directional;
-            sun.intensity = 1.15f;
-            sun.shadows = LightShadows.Soft;
-            sun.transform.rotation = Quaternion.Euler(50, -30, 0);
-            var sky = new Material(Shader.Find("Skybox/Procedural"));
-            RenderSettings.skybox = sky;
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.55f, 0.6f, 0.7f);
-            RenderSettings.ambientEquatorColor = new Color(0.42f, 0.42f, 0.45f);
-            RenderSettings.ambientGroundColor = new Color(0.25f, 0.24f, 0.22f);
-            DynamicGI.UpdateEnvironment();
+            // Sun, sky, fog and reflections; a camera with bloom
+            if (OriginalTextures)
+                OldLighting();
+            else
+                MapAtmosphere.Apply(loader);
 
             cam = new GameObject("Demo Camera").AddComponent<Camera>();
             cam.fieldOfView = 62;
@@ -109,6 +101,22 @@ namespace FortressUnited.Game
 
             if (Stage == "spawn") FindSpawnStage(); else FindStage();
             StartCoroutine(LookTour ? Tour() : MeleeShowcase ? Melee() : Script());
+        }
+
+        /// <summary>The plain lighting the greybox had, for before/after comparisons.</summary>
+        static void OldLighting()
+        {
+            var sun = new GameObject("Sun").AddComponent<Light>();
+            sun.type = LightType.Directional;
+            sun.intensity = 1.15f;
+            sun.shadows = LightShadows.Soft;
+            sun.transform.rotation = Quaternion.Euler(50, -30, 0);
+            RenderSettings.skybox = new Material(Shader.Find("Skybox/Procedural"));
+            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.55f, 0.6f, 0.7f);
+            RenderSettings.ambientEquatorColor = new Color(0.42f, 0.42f, 0.45f);
+            RenderSettings.ambientGroundColor = new Color(0.25f, 0.24f, 0.22f);
+            DynamicGI.UpdateEnvironment();
         }
 
         // ------------------------------------------------------------ staging
@@ -520,7 +528,18 @@ namespace FortressUnited.Game
             spots.Sort((a, b) => b.area.CompareTo(a.area));
             var picks = spots.FindAll(s => s.water).GetRange(0, Mathf.Min(1, spots.FindAll(s => s.water).Count));
             foreach (var s in spots)
-                if (!s.water && picks.Count < 7) picks.Add(s);
+                if (!s.water && picks.Count < 5) picks.Add(s);
+            // Wide views first: across the open area both ways, and from high up
+            Vector3 o = origin + Vector3.up * 1.7f;
+            foreach (var (from, to) in new[] {
+                (o - fwd * 6, o + fwd * 20), (o + fwd * 6, o - fwd * 20),
+                (o + Vector3.up * 8 - right * 10, o + fwd * 4), (o + right * 5, o - right * 20) })
+            {
+                Vector3 f = from, t = to, drift = right * 0.5f;
+                shot = time => (f + drift * time, t);
+                shotStart = Time.time;
+                yield return new WaitForSeconds(2.5f);
+            }
             foreach (var s in picks)
             {
                 // Water from above and to the side; walls and floors from 4 m out, at head height
