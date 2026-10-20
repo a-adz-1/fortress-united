@@ -5,11 +5,12 @@ namespace FortressUnited.Game
     /// <summary>
     /// A stand-in player body built from primitives (1.8 m, A-pose), with
     /// the bones a ragdoll needs and a spot for a chest screen. For testing
-    /// bodies before the rigged class models arrive.
+    /// bodies before the rigged class models arrive. Hits ripple its armour
+    /// (HitRipple); with colliders it can be shot as a standing target.
     /// </summary>
     public static class Mannequin
     {
-        public static GameObject Build(Vector3 feet, float yaw, Color team, out BodyBones bones, out Transform chestScreen)
+        public static GameObject Build(Vector3 feet, float yaw, Color team, out BodyBones bones, out Transform chestScreen, bool colliders = false)
         {
             var root = new GameObject("Body");
             root.transform.SetPositionAndRotation(feet, Quaternion.Euler(0, yaw, 0));
@@ -65,6 +66,10 @@ namespace FortressUnited.Game
             chestScreen.localScale = new Vector3(0.2f, 0.08f, 1);
             Shape(PrimitiveType.Cube, b.Spine, new Vector3(0, 0.2f, 0.118f), Quaternion.identity, new Vector3(0.22f, 0.1f, 0.01f), suit);
 
+            if (!colliders)
+                foreach (var c in root.GetComponentsInChildren<Collider>())
+                    Object.DestroyImmediate(c);
+            HitRipple.Attach(root, team);
             bones = b;
             return root;
         }
@@ -81,7 +86,6 @@ namespace FortressUnited.Game
         static GameObject Shape(PrimitiveType type, Transform parent, Vector3 pos, Quaternion rot, Vector3 scale, Material mat)
         {
             var go = GameObject.CreatePrimitive(type);
-            Object.DestroyImmediate(go.GetComponent<Collider>());
             go.transform.SetParent(parent, false);
             go.transform.localPosition = pos;
             go.transform.localRotation = rot;

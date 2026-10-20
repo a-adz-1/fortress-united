@@ -3,7 +3,9 @@
     "rootNamespace": "FortressUnited.EditorTools",
     "references": [
         "FortressUnited.Core",
-        "FortressUnited.Game"
+        "FortressUnited.Game",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [
         "Editor"

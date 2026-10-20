@@ -24,6 +24,10 @@ namespace FortressUnited.Game
         Transform pivot, model;
         float swingT = -1;
         float bobPhase;
+        bool swingHit;
+        [Tooltip("Reach of a swing (m).")]
+        public float Reach = 1.3f;
+        public float Damage = 25;
 
         public static SpannerViewModel Create(GameObject prefab, Camera cam, PlayerController player, Color arcColor)
         {
@@ -62,6 +66,21 @@ namespace FortressUnited.Game
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
+        void Strike()
+        {
+            var cam = transform.parent;
+            if (cam == null)
+                return;
+            if (!Physics.SphereCast(cam.position, 0.12f, cam.forward, out var hit, Reach))
+                return;
+            var target = hit.collider.GetComponentInParent<HitRipple>();
+            if (target != null)
+                target.Hit(hit.point, Damage);
+            if (hit.rigidbody != null && !hit.rigidbody.isKinematic)
+                hit.rigidbody.AddForceAtPosition(cam.forward * 3, hit.point, ForceMode.VelocityChange);
+            Arc?.Surge(1.5f);
+        }
+
         Vector3 Local(Transform t) => model.InverseTransformPoint(t.position);
 
         Transform Find(string name)
@@ -78,6 +97,7 @@ namespace FortressUnited.Game
             if (mouse != null && mouse.leftButton.wasPressedThisFrame && Cursor.lockState == CursorLockMode.Locked && swingT < 0)
             {
                 swingT = 0;
+                swingHit = false;
                 Arc?.Surge(1);
             }
         }
@@ -95,6 +115,12 @@ namespace FortressUnited.Game
                 else if (t < 0.45f) { float k = (t - 0.2f) / 0.25f; k = k * k; pitch = Mathf.Lerp(-25, 55, k); yaw = Mathf.Lerp(-10, 25, k); }
                 else { float k = Mathf.SmoothStep(0, 1, (t - 0.45f) / 0.55f); pitch = Mathf.Lerp(55, 0, k); yaw = Mathf.Lerp(25, 0, k); }
                 swing = Quaternion.Euler(pitch, yaw, 0);
+                // The blow lands mid-chop
+                if (!swingHit && t >= 0.32f)
+                {
+                    swingHit = true;
+                    Strike();
+                }
                 if (swingT >= 1) swingT = -1;
             }
 

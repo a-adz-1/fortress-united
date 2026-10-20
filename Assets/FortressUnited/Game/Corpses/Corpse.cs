@@ -133,9 +133,18 @@ namespace FortressUnited.Game
         void PrepareFade()
         {
             fade = 0.0001f;
+            var ripple = GetComponent<HitRipple>();
+            if (ripple != null)
+                Destroy(ripple);
             foreach (var r in GetComponentsInChildren<Renderer>())
             {
                 r.shadowCastingMode = ShadowCastingMode.Off;
+                // Drop the shield ripple layer, then fade instances of the rest
+                var keep = new List<Material>();
+                foreach (var m in r.sharedMaterials)
+                    if (m != null && m.shader.name != "FortressUnited/ShieldRipple")
+                        keep.Add(m);
+                r.sharedMaterials = keep.ToArray();
                 foreach (var m in r.materials)   // instances, so other bodies aren't affected
                 {
                     if (m.HasProperty("_Surface"))

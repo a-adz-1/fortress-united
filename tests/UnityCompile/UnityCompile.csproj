@@ -23,5 +23,7 @@
     <Reference Include="$(UnityManaged)/UnityEngine/*.dll" Private="false" />
     <Reference Include="../../Library/ScriptAssemblies/Unity.InputSystem.dll" Private="false" />
     <Reference Include="../../Library/ScriptAssemblies/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="../../Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.dll" Private="false" />
+    <Reference Include="../../Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Runtime.dll" Private="false" />
   </ItemGroup>
 </Project>

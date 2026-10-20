@@ -76,6 +76,8 @@ namespace FortressUnited.Game
 #endif
             bool red = Team == 2;
             var cam = player.GetComponentInChildren<Camera>();
+            if (cam != null)
+                GreyboxPostFx.Add(cam);
             var slots = player.gameObject.AddComponent<ViewModelSlots>();
             var spanner = red ? SpannerRed : SpannerBlue;
             var medkit = red ? MedkitRed : MedkitBlue;
