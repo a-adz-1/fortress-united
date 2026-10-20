@@ -23,6 +23,9 @@ namespace FortressUnited.Game
         public PlayerController Player;
         public PlayerVitals Vitals;
         public Color EnemyColour = new Color(1f, 0.3f, 0.25f);
+        [Tooltip("Enemy class model for dummies and bodies (the primitive mannequin if empty).")]
+        public GameObject EnemyModel;
+        public AnimationClip EnemyWalk;
         [Tooltip("Medics shake off concussion in 7 seconds instead of 15.")]
         public bool Medic = true;
 
@@ -141,7 +144,21 @@ namespace FortressUnited.Game
         {
             if (!SpotAhead(3, out var feet, out var flat))
                 return;
-            var dummy = Mannequin.Build(feet, Quaternion.LookRotation(-flat).eulerAngles.y, EnemyColour, out _, out _, colliders: true);
+            float yaw = Quaternion.LookRotation(-flat).eulerAngles.y;
+            if (EnemyModel != null)
+            {
+                // A real class model walking back and forth across your view
+                var c = RobotCharacter.Spawn(EnemyModel, feet, yaw + 90, EnemyColour, EnemyWalk);
+                c.name = "Target Dummy";
+                var capsule = c.gameObject.AddComponent<CapsuleCollider>();
+                capsule.center = new Vector3(0, 0.9f, 0);
+                capsule.height = 1.8f;
+                capsule.radius = 0.28f;
+                c.gameObject.AddComponent<DummyWalker>();
+                dummies.Add(c.Fx);
+                return;
+            }
+            var dummy = Mannequin.Build(feet, yaw, EnemyColour, out _, out _, colliders: true);
             dummy.name = "Target Dummy";
             dummies.Add(dummy.GetComponent<RobotFx>());
         }
@@ -162,10 +179,18 @@ namespace FortressUnited.Game
         {
             if (!SpotAhead(2.5f, out var feet, out var flat))
                 return;
-            var body = Mannequin.Build(feet + Vector3.up * 0.02f, Quaternion.LookRotation(-flat).eulerAngles.y + Random.Range(-30f, 30f),
-                EnemyColour, out var bones, out var screen);
+            float yaw = Quaternion.LookRotation(-flat).eulerAngles.y + Random.Range(-30f, 30f);
             // Thrown back and up by the blast
             Vector3 kick = flat * Random.Range(3f, 6f) + Vector3.up * Random.Range(3f, 5f) + Random.insideUnitSphere;
+            if (EnemyModel != null)
+            {
+                var c = RobotCharacter.Spawn(EnemyModel, feet + Vector3.up * 0.02f, yaw, EnemyColour, EnemyWalk);
+                c.Animator.Update(0.3f);   // mid-stride, so bodies don't all start the same
+                c.Stop();
+                Corpse.Create(c.gameObject, c.Bones, kick, Random.Range(120f, 170f), c.ScreenAnchor);
+                return;
+            }
+            var body = Mannequin.Build(feet + Vector3.up * 0.02f, yaw, EnemyColour, out var bones, out var screen);
             Corpse.Create(body, bones, kick, Random.Range(120f, 170f), screen);
         }
 

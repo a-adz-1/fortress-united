@@ -14,10 +14,20 @@ namespace FortressUnited.EditorTools
     ///   Name_MetallicSmoothness.png    R metallic, A smoothness (URP layout)
     ///   Name_Emission.png              glow (optional)
     /// Materials named "Screen..." are left for the game to draw on.
+    /// Models under Art/Characters (tools/meshy/prepare_character.py) import
+    /// as Humanoid, so any humanoid animation plays on any class, with
+    /// their clips looping in place.
     /// </summary>
     public sealed class ArtPostprocessor : AssetPostprocessor
     {
         const string Root = "Assets/FortressUnited/Art/";
+        const string Characters = Root + "Characters/";
+        static readonly string[] TextureSuffixes = { "_BaseColor", "_Normal", "_MetallicSmoothness", "_Emission" };
+
+        // Bump to make Unity reimport everything this processes
+        public override uint GetVersion() => 4;
+        // After URP's own material description preprocessor
+        public override int GetPostprocessOrder() => 100;
 
         void OnPreprocessTexture()
         {
@@ -39,17 +49,68 @@ namespace FortressUnited.EditorTools
         {
             if (!assetPath.StartsWith(Root))
                 return;
+            // Declare the textures, so they import first and loading them in
+            // OnPostprocessMaterial works (and edits to them reimport the model)
+            string dir = Path.GetDirectoryName(assetPath).Replace('\\', '/');
+            string name = Path.GetFileNameWithoutExtension(assetPath);
+            foreach (var suffix in TextureSuffixes)
+            {
+                string tex = $"{dir}/{name}{suffix}.png";
+                if (File.Exists(tex))
+                    context.DependsOnArtifact(tex);
+            }
+
             var mi = (ModelImporter)assetImporter;
             mi.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
             mi.materialLocation = ModelImporterMaterialLocation.InPrefab;
             mi.useFileScale = true;
             mi.globalScale = 1;
+            if (assetPath.StartsWith(Characters))
+            {
+                mi.animationType = ModelImporterAnimationType.Human;
+                mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
+                mi.importAnimation = true;
+                mi.animationCompression = ModelImporterAnimationCompression.Optimal;
+            }
+        }
+
+        void OnPreprocessAnimation()
+        {
+            if (!assetPath.StartsWith(Characters))
+                return;
+            var mi = (ModelImporter)assetImporter;
+            var clips = mi.defaultClipAnimations;
+            foreach (var c in clips)
+            {
+                // Strip the Blender "Rig|" prefix; loop in place, the game moves the body
+                int bar = c.name.LastIndexOf('|');
+                if (bar >= 0) c.name = c.name.Substring(bar + 1);
+                c.loopTime = true;
+                c.lockRootRotation = true;
+                c.lockRootHeightY = true;
+                c.lockRootPositionXZ = true;
+                c.keepOriginalOrientation = true;
+                c.keepOriginalPositionY = true;
+                c.keepOriginalPositionXZ = true;
+            }
+            mi.clipAnimations = clips;
+        }
+
+        // Models import their materials via material descriptions, which calls this
+        void OnPreprocessMaterialDescription(UnityEditor.AssetImporters.MaterialDescription description, Material material, AnimationClip[] clips)
+        {
+            if (assetPath.StartsWith(Root))
+                SetUp(material, description.materialName);
         }
 
         void OnPostprocessMaterial(Material material)
         {
-            if (!assetPath.StartsWith(Root))
-                return;
+            if (assetPath.StartsWith(Root))
+                SetUp(material, material.name);
+        }
+
+        void SetUp(Material material, string materialName)
+        {
             string dir = Path.GetDirectoryName(assetPath).Replace('\\', '/');
             string name = Path.GetFileNameWithoutExtension(assetPath);
 
@@ -57,7 +118,7 @@ namespace FortressUnited.EditorTools
             if (lit != null && material.shader != lit)
                 material.shader = lit;
 
-            if (material.name.StartsWith("Screen"))
+            if (materialName.StartsWith("Screen"))
             {
                 material.SetColor("_BaseColor", new Color(0.02f, 0.05f, 0.06f));
                 return;

@@ -19,6 +19,9 @@ namespace FortressUnited.Game
         public GameObject MedkitBlue, MedkitRed;
         [Tooltip("Plasma spanner view models by team (found by name in the editor if left empty).")]
         public GameObject SpannerBlue, SpannerRed;
+        [Tooltip("Class models by team, for dummies and bodies (found by name in the editor if left empty).")]
+        public GameObject MedicBlue, MedicRed;
+        public AnimationClip MedicBlueWalk, MedicRedWalk;
 
         void Start()
         {
@@ -73,8 +76,16 @@ namespace FortressUnited.Game
             if (MedkitRed == null) MedkitRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Medkit/Medkit_Red.fbx");
             if (SpannerBlue == null) SpannerBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Spanner/Spanner_Blue.fbx");
             if (SpannerRed == null) SpannerRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Spanner/Spanner_Red.fbx");
+            if (MedicBlue == null) MedicBlue = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Blue.fbx");
+            if (MedicRed == null) MedicRed = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(art + "Characters/Medic/Medic_Red.fbx");
+            if (MedicBlueWalk == null) MedicBlueWalk = Clip(art + "Characters/Medic/Medic_Blue.fbx");
+            if (MedicRedWalk == null) MedicRedWalk = Clip(art + "Characters/Medic/Medic_Red.fbx");
 #endif
             bool red = Team == 2;
+            // The other team's medic stands in as the enemy
+            driver.EnemyModel = red ? MedicBlue : MedicRed;
+            driver.EnemyWalk = red ? MedicBlueWalk : MedicRedWalk;
+            driver.EnemyColour = red ? new Color(0.3f, 0.7f, 1f) : new Color(1f, 0.3f, 0.25f);
             var cam = player.GetComponentInChildren<Camera>();
             if (cam != null)
                 GreyboxPostFx.Add(cam);
@@ -93,5 +104,15 @@ namespace FortressUnited.Game
             if (slots.Slots.Count == 0)
                 Debug.LogWarning("Fortress United: no view models found under Art/");
         }
+
+#if UNITY_EDITOR
+        static AnimationClip Clip(string path)
+        {
+            foreach (var o in UnityEditor.AssetDatabase.LoadAllAssetsAtPath(path))
+                if (o is AnimationClip c && !c.name.StartsWith("__preview__"))
+                    return c;
+            return null;
+        }
+#endif
     }
 }
