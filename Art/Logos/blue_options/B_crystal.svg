@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 580" width="512" height="580">
+  <!-- Blue option B, Crystal: four-point ice star -->
+  <defs>
+    <mask id="ringgaps"><rect width="512" height="580" fill="#fff"/><polygon fill="#000" points="256,40 300,236 470,282 300,328 256,530 212,328 42,282 212,236" stroke="#000" stroke-width="30" stroke-linejoin="round"/></mask>
+    <mask id="cuts"><rect width="512" height="580" fill="#fff"/><polygon fill="#000" points="256,150 282,256 256,290 230,256"/><polygon fill="#000" points="256,330 232,420 256,400 280,420"/></mask>
+  </defs>
+  <circle cx="256" cy="282" r="170" fill="none" stroke="#fff" stroke-width="30" mask="url(#ringgaps)"/>
+  <g mask="url(#cuts)"><polygon fill="#fff" points="256,40 300,236 470,282 300,328 256,530 212,328 42,282 212,236"/></g>
+</svg>

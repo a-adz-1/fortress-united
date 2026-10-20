@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 580" width="512" height="580">
+  <!-- Blue option D, Talon: diving hawk, wings swept up -->
+  <defs>
+    <mask id="ringgaps"><rect width="512" height="580" fill="#fff"/><polygon fill="#000" points="264,260 452,96 420,196 360,240 402,238 330,300 288,320" stroke="#000" stroke-width="30" stroke-linejoin="round"/><polygon fill="#000" points="248,260 60,96 92,196 152,240 110,238 182,300 224,320" stroke="#000" stroke-width="30" stroke-linejoin="round"/><polygon fill="#000" points="256,200 290,250 284,360 256,540 228,360 222,250" stroke="#000" stroke-width="30" stroke-linejoin="round"/><polygon fill="#000" points="256,150 276,196 256,214 236,196" stroke="#000" stroke-width="30" stroke-linejoin="round"/></mask>
+    <mask id="cuts"><rect width="512" height="580" fill="#fff"/><polygon fill="#000" points="256,292 270,330 256,430 242,330"/></mask>
+  </defs>
+  <circle cx="256" cy="282" r="170" fill="none" stroke="#fff" stroke-width="30" mask="url(#ringgaps)"/>
+  <g mask="url(#cuts)"><polygon fill="#fff" points="264,260 452,96 420,196 360,240 402,238 330,300 288,320"/><polygon fill="#fff" points="248,260 60,96 92,196 152,240 110,238 182,300 224,320"/><polygon fill="#fff" points="256,200 290,250 284,360 256,540 228,360 222,250"/><polygon fill="#fff" points="256,150 276,196 256,214 236,196"/></g>
+</svg>

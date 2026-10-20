@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 580" width="512" height="580">
+  <!-- Red team emblem: spear, swept wings and ring. Redrawn from the red flag concept. -->
+  <defs>
+    <mask id="ringgaps"><rect width="512" height="580" fill="#fff"/>
+      <polygon fill="#000" points="256,16 316,212 286,312 256,340 226,312 196,212" stroke="#000" stroke-width="30" stroke-linejoin="round"/><polygon fill="#000" points="270,300 446,168 420,254 344,322 306,404 256,556" stroke="#000" stroke-width="30" stroke-linejoin="round"/><polygon fill="#000" points="242,300 66,168 92,254 168,322 206,404 256,556" stroke="#000" stroke-width="30" stroke-linejoin="round"/><polygon fill="#000" stroke="#000" stroke-width="30" stroke-linejoin="round" points="256,296 340,318 300,420 256,556 212,420 172,318"/></mask>
+    <mask id="slots"><rect width="512" height="580" fill="#fff"/>
+      <polygon fill="#000" points="300,330 398,258 384,286 306,352"/><polygon fill="#000" points="212,330 114,258 128,286 206,352"/><polyline fill="none" stroke="#000" stroke-width="9" stroke-linejoin="miter" points="214,344 256,448 298,344"/><polygon fill="#000" points="256,96 266,214 256,300 246,214"/></mask>
+  </defs>
+  <circle cx="256" cy="282" r="170" fill="none" stroke="#fff" stroke-width="30" mask="url(#ringgaps)"/>
+  <g mask="url(#slots)"><polygon fill="#fff" points="256,296 340,318 300,420 256,556 212,420 172,318"/><polygon fill="#fff" points="256,16 316,212 286,312 256,340 226,312 196,212"/><polygon fill="#fff" points="270,300 446,168 420,254 344,322 306,404 256,556"/><polygon fill="#fff" points="242,300 66,168 92,254 168,322 206,404 256,556"/></g>
+</svg>
