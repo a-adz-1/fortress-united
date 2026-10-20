@@ -85,8 +85,10 @@ def load(path):
     return data, bones, seqs
 
 
-def hand_verts(data, hand):
-    """Vertices skinned to the hand bone (hand and the weapon it holds), in bone space."""
+def hand_verts(data, hand, extra=()):
+    """Vertices skinned to the hand bone (hand and the weapon it holds) and to any
+    weapon bones (e.g. the knife's own bone), as (bone, position in bone space)."""
+    wanted = {hand, *extra}
     numbodyparts, bodypartindex = read("<ii", data, 204)
     out = []
     for bp in range(numbodyparts):
@@ -96,8 +98,9 @@ def hand_verts(data, hand):
             mo = modelindex + m * 112
             numverts, vertinfoindex, vertindex = read("<iii", data, mo + 80)
             for v in range(numverts):
-                if data[vertinfoindex + v] == hand:
-                    out.append(read("<3f", data, vertindex + v * 12))
+                b = data[vertinfoindex + v]
+                if b in wanted:
+                    out.append((b, read("<3f", data, vertindex + v * 12)))
     return out
 
 
@@ -151,7 +154,10 @@ def main():
     fore = find(bones, " r forearm", " r arm2")
     upper = find(bones, " r upperarm", " r arm1")
     names = [b["name"] for b in bones]
-    hv = hand_verts(data, hand) if hand is not None else []
+    # weapon bones: anything outside the body rig that hangs off the hand (e.g. "knife01")
+    weapon_bones = [i for i, b in enumerate(bones)
+                    if "biped" not in b["name"].lower() and "bip01" not in b["name"].lower()]
+    hv = hand_verts(data, hand, weapon_bones) if hand is not None else []
     # The weapon: the bone furthest from the hand among those not in the arm chain
     print("bones:", names)
     result = {"model": path.split("/")[-1], "bones": names, "sequences": []}
@@ -166,8 +172,11 @@ def main():
                       key=lambda i: p[i][1][0], default=None)
             # Weapon tip: the hand-bound vertex farthest from the wrist
             if hv:
-                hr, hp = p[hand]
-                pts = [[hp[i] + mvec(hr, v)[i] for i in range(3)] for v in hv]
+                hp = p[hand][1]
+                pts = []
+                for b, v in hv:
+                    br, bp = p[b]
+                    pts.append([bp[i] + mvec(br, v)[i] for i in range(3)])
                 far = max(pts, key=lambda q: sum((q[i] - hp[i]) ** 2 for i in range(3)))
             frames.append({
                 "far": unity(far) if hv else None,

@@ -29,12 +29,12 @@ namespace FortressUnited.Game
         public Transform ElbowHint { get; private set; }
         public Transform LeftElbowHint { get; private set; }
         [Tooltip("Distance between the hands on TFC's medkit (scaled to our view), which the handles are sized to.")]
-        public float HandSpan = 0.356f * 0.6793f;
+        public float HandSpan = 0.30f;
         /// <summary>A jab connected (heal a teammate, infect an enemy).</summary>
         public System.Action<RaycastHit> OnStrike;
         public float Reach = 1.3f;
         [Tooltip("Lift on top of TFC's hold so the kit's screen shows (TFC's kit is smaller and screenless).")]
-        public Vector3 HoldShift = new Vector3(0, 0.06f, 0.02f);
+        public Vector3 HoldShift = new Vector3(0, 0.11f, 0.05f);
 
         Transform carry;
         float idleTime, swingT = -1;
@@ -103,7 +103,7 @@ namespace FortressUnited.Game
             carry.SetParent(transform, false);
             Vector3 restKit = ViewModelMotion.Sample(Both.IdleKit, 0, true);
             Bounds b = HolderBounds();
-            float span = b.size.x * 0.88f;
+            float span = b.size.x;
             if (span > 0.001f)
             {
                 model.localScale *= HandSpan / span;
@@ -115,16 +115,18 @@ namespace FortressUnited.Game
             model.SetParent(carry, true);
             basePosition = model.localPosition;
             b = HolderBounds();
+            // Grips on the outer side edges, towards the camera, so each fist wraps
+            // around its side of the kit in plain view
             Transform Handle(string name, float x)
             {
                 var t = new GameObject(name).transform;
                 t.SetParent(carry, false);
-                t.position = transform.TransformPoint(new Vector3(x, b.center.y, b.center.z));
+                t.position = transform.TransformPoint(new Vector3(x, b.center.y, b.min.z + b.size.z * 0.25f));
                 t.localRotation = Quaternion.LookRotation(Vector3.up, Vector3.back);   // handles run up and down
                 return t;
             }
-            Grip = Handle("Right Grip", b.max.x - b.size.x * 0.11f);
-            LeftGrip = Handle("Left Grip", b.min.x + b.size.x * 0.11f);
+            Grip = Handle("Right Grip", b.max.x - b.size.x * 0.05f);
+            LeftGrip = Handle("Left Grip", b.min.x + b.size.x * 0.05f);
             ElbowHint = new GameObject("Elbow Hint").transform;
             ElbowHint.SetParent(transform, false);
             LeftElbowHint = new GameObject("Left Elbow Hint").transform;

@@ -83,10 +83,6 @@ namespace FortressUnited.Game
             vm.pivot.localRotation = Quaternion.Euler(vm.HoldAngles);
             vm.Reach = 1.0f;
             vm.Motion = ViewModelMotions.Killswitch;
-            // TFC's knife arm comes in level and close; the medic's forearm is much
-            // bulkier, so it comes up from below instead and the hand sits a little higher
-            vm.HandShift = new Vector3(0.03f, 0.05f, 0.02f);
-            vm.ElbowShift = new Vector3(0.06f, -0.22f, -0.12f);
             // No arc at all; the blade's own glow flares instead
             if (Application.isPlaying) Destroy(vm.Arc); else DestroyImmediate(vm.Arc);
             vm.Arc = null;

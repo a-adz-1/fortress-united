@@ -21,7 +21,7 @@ namespace FortressUnited.Game
         [Tooltip("Where the elbows should point (optional; otherwise down and out).")]
         public Transform RightElbow, LeftElbow;
         [Tooltip("The fists are a little smaller than the full-size character's.")]
-        public float HandScale = 0.85f;
+        public float HandScale = 0.65f;
         [Tooltip("How far the hand may turn from the forearm's line to follow a handle (degrees).")]
         public float MaxHandTurn = 50;
 
