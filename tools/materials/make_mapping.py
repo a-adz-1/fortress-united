@@ -12,6 +12,7 @@ Modes (the futuristic look):
 - metal: the same with smaller, darker metal panels (doors, trims, tech)
 - replace: a PBR material tinted to the old texture's colour (rock, ground,
   sand, snow: natural surfaces)
+- logo: our team logo glowing on a dark panel (TFC's team emblems)
 - light: the old texture glowing (light fixtures); sign: the old texture,
   softly lit like a screen; glass: see-through; keep: unchanged
   (see-through grates, special textures); water is chosen by the game ('!')
@@ -47,6 +48,8 @@ METALLIC = ("door", "trim/edge", "tech/computer", "metal")
 def style(name, category, material, mode):
     """The futuristic look's mode for a texture, from what it is."""
     n = name.lower()
+    if mode == "logo":
+        return "logo"
     if category == "light" or "~" in n or n.startswith("light"):
         return "light"
     if category == "sign/decal" or n.startswith(("sign", "exit", "team")):
@@ -67,15 +70,18 @@ def main():
     for line in open(os.path.join(HERE, "overrides.csv")):
         if line.startswith("#") or line.startswith("texture,") or not line.strip():
             continue
-        t, m, mode = line.strip().split(",")
-        over[t.lower()] = (m, mode)
+        parts = line.strip().split(",")
+        t, m, mode = parts[:3]
+        over[t.lower()] = (m, mode, parts[3] if len(parts) > 3 else "")
     rows = list(csv.DictReader(open(os.path.join(ROOT, "docs", "maps", "texture-inventory.csv"))))
     out = []
     counts = {}
     for r in rows:
         name = r["texture"].lower()
+        team = r["team"]
         if name in over:
-            m, mode = over[name]
+            m, mode, t_over = over[name]
+            team = t_over or team
         elif r["special"] or keep(name, r["category"]):
             m, mode = "", "keep"
         else:
@@ -84,7 +90,7 @@ def main():
         if mode == "replace" and not m.startswith(NATURAL):
             m = {"stone/rock": "Rock030", "ground/terrain": "Ground048"}.get(r["category"], "Rock030")
         counts[mode] = counts.get(mode, 0) + 1
-        out.append((name, m, mode, r["team"]))
+        out.append((name, m, mode, team))
     dst = os.path.join(ROOT, "Assets", "FortressUnited", "Resources", "MapMaterials.csv")
     with open(dst, "w") as f:
         f.write("texture,material,mode,team\n")

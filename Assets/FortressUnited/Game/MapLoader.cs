@@ -157,6 +157,8 @@ namespace FortressUnited.Game
         {
             var texture = Bsp.Textures[tex];
             float w = Math.Max(1, texture.Width), h = Math.Max(1, texture.Height);
+            // Logos are fitted to each face (centred, aspect kept) rather than tiled the old way
+            bool fit = UseWorldMaterials && WorldMaterials.ModeOf(texture.Name) == "logo";
             var verts = new List<Vector3>();
             var norms = new List<Vector3>();
             var uvs = new List<Vector2>();
@@ -177,6 +179,8 @@ namespace FortressUnited.Game
                     float v = (Vec3.Dot(p, ti.T) + ti.TOffset) / h;
                     uvs.Add(new Vector2(u, v));
                 }
+                if (fit)
+                    FitUVs(uvs, first);
                 // Fan triangulation; wind so the front faces the normal in Unity space
                 for (int k = 1; k + 1 < f.Points.Length; k++)
                 {
@@ -202,6 +206,22 @@ namespace FortressUnited.Game
             mesh.RecalculateBounds();
             mesh.RecalculateTangents();     // for the materials' normal and detail maps
             return mesh;
+        }
+
+        /// <summary>Rescales one face's UVs (from first on) to 0..1 around its middle, keeping the aspect.</summary>
+        static void FitUVs(List<Vector2> uvs, int first)
+        {
+            Vector2 min = uvs[first], max = uvs[first];
+            for (int k = first; k < uvs.Count; k++)
+            {
+                min = Vector2.Min(min, uvs[k]);
+                max = Vector2.Max(max, uvs[k]);
+            }
+            Vector2 size = max - min, mid = (min + max) * 0.5f;
+            float s = Math.Max(size.x, size.y);
+            if (s <= 0) return;
+            for (int k = first; k < uvs.Count; k++)
+                uvs[k] = (uvs[k] - mid) / s + new Vector2(0.5f, 0.5f);
         }
 
         Material MaterialFor(int tex)

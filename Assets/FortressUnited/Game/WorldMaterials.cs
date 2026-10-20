@@ -15,7 +15,8 @@ namespace FortressUnited.Game
     /// bands and glowing seams; metal is smaller, darker panelling for doors and trims</item>
     /// <item>replace: a CC0 PBR material (tools/materials/fetch.py) tinted to the old
     /// texture's colour, for rock, ground and other natural surfaces</item>
-    /// <item>light / sign: the old texture glowing; glass: see-through; keep: unchanged</item>
+    /// <item>light / sign: the old texture glowing; logo: our team logo glowing (TFC's
+    /// team emblems); glass: see-through; keep: unchanged</item>
     /// </list>
     /// Liquids ('!' textures) get the animated water shader.
     /// </summary>
@@ -83,6 +84,7 @@ namespace FortressUnited.Game
                 case "light": Glow(mat, original, 3.5f); return;
                 case "sign": Glow(mat, original, 1.2f); return;
                 case "glass": MakeGlass(mat, team); return;
+                case "logo": MakeLogo(mat, team); return;
             }
             if (string.IsNullOrEmpty(id) || !library.TryGetValue(id, out var entry) || original == null)
                 return;
@@ -207,6 +209,30 @@ namespace FortressUnited.Game
             mat.SetColor("_EmissionColor", Color.white * strength);
             mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             mat.SetFloat("_Smoothness", 0.85f);
+        }
+
+        /// <summary>The look a texture gets ("panel", "logo", ...), or null if it isn't in the table.</summary>
+        public static string ModeOf(string name)
+        {
+            Init();
+            return Lookup(name, out _, out var mode, out _) ? mode : null;
+        }
+
+        /// <summary>Our team logo glowing on a dark glossy panel (the loader fits it to each face).</summary>
+        static void MakeLogo(Material mat, string team)
+        {
+            var t = TeamOf(team) ?? TeamColours.Team.Blue;
+            var logo = TeamColours.Logo(t);
+            if (logo == null)
+                return;
+            mat.SetTexture("_BaseMap", null);
+            mat.SetColor("_BaseColor", new Color(0.02f, 0.025f, 0.035f));
+            mat.SetFloat("_Smoothness", 0.85f);
+            mat.EnableKeyword("_EMISSION");
+            mat.SetTexture("_EmissionMap", logo);
+            mat.SetColor("_EmissionColor", TeamColours.Glow(TeamColours.For(t), 2.2f));
+            mat.SetTextureScale("_BaseMap", Vector2.one);
+            mat.SetTextureOffset("_BaseMap", Vector2.zero);
         }
 
         /// <summary>Windows: tinted, see-through and glossy.</summary>

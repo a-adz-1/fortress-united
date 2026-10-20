@@ -19,13 +19,16 @@ dark undersuit, team-colour glow), and the maps match it.
 - Team bases: found from each team's spawn points; walls there get team bands
   with glowing team lines, and white lights lean to the team's colour.
 - Indicator lights: small blinking coloured dots on some panels.
+- Wall screens (`Game/MapScreens.cs`): placed automatically on big, flat,
+  indoor walls in each base; they show the match live from `MatchInfo`
+  (logo, base name, clock, score, flag status, news ticker).
+- Team logos: TFC's team emblem textures become our logos, glowing on a dark panel.
 
 ## Ideas to add (references: Creepy Cat's 3D Scifi Kit on the Asset Store)
 
 - **Light strips** along floor edges, door frames and ceiling ribs (yellow,
   cyan, team colour).
-- **Wall screens** with live UI (scores, flag status, class counts), using the
-  same screen tech as the medkit's vitals display.
+- **More screen content:** class counts, kill feed, sentry status, a map of the base.
 - **Structural detail:** curved ribs or arches along corridors, railings on
   walkways and ledges, pipes and cable runs, door frames, kick plates.
 - **Signs as holograms:** the old signs redrawn as clean projected panels.

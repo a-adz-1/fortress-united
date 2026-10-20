@@ -529,6 +529,24 @@ namespace FortressUnited.Game
             var picks = spots.FindAll(s => s.water).GetRange(0, Mathf.Min(1, spots.FindAll(s => s.water).Count));
             foreach (var s in spots)
                 if (!s.water && picks.Count < 5) picks.Add(s);
+            // A little match on the base screens: blue leads, then takes red's flag and scores
+            MatchInfo.Scores[0] = 2; MatchInfo.Scores[1] = 1;
+            MatchInfo.TimeLeft = 14 * 60 + 32;
+            MatchInfo.Post("BLUE SENTRY UPGRADED TO LEVEL 3");
+            StartCoroutine(MatchStory());
+
+            // The wall screens, close up: one in each base
+            var seen = new HashSet<int>();
+            foreach (var scr in MapScreens.Placed)
+            {
+                var (team, _) = MapLights.TeamAt(scr.position);
+                if (!seen.Add(team)) continue;
+                Vector3 at = scr.position, from = scr.position + scr.forward * 2.3f + scr.right * 0.6f - Vector3.up * 0.15f;
+                shot = time => (from - scr.right * time * 0.35f, at);
+                shotStart = Time.time;
+                yield return new WaitForSeconds(3f);
+            }
+
             // Inside each base: from a spawn point, looking where players face, then back
             var mapWorld = GetComponent<MapLoader>().World;
             foreach (int team in new[] { 1, 2 })
@@ -570,6 +588,28 @@ namespace FortressUnited.Game
             }
             shot = null;
             Quit();
+        }
+
+        IEnumerator MatchStory()
+        {
+            while (true)
+            {
+                MatchInfo.TimeLeft -= 1;
+                float t = Time.time;
+                if (t > 2.0f && MatchInfo.Flags[1] == MatchInfo.FlagState.Home && MatchInfo.Scores[0] == 2)
+                {
+                    MatchInfo.Flags[1] = MatchInfo.FlagState.Taken;
+                    MatchInfo.Carriers[1] = "Blue Scout";
+                    MatchInfo.Post("RED FLAG TAKEN BY BLUE SCOUT");
+                }
+                if (t > 9f && MatchInfo.Flags[1] == MatchInfo.FlagState.Taken)
+                {
+                    MatchInfo.Flags[1] = MatchInfo.FlagState.Home;
+                    MatchInfo.Scores[0] = 3;
+                    MatchInfo.Post("BLUE CAPTURED THE RED FLAG");
+                }
+                yield return new WaitForSeconds(1);
+            }
         }
 
         IEnumerator Melee()

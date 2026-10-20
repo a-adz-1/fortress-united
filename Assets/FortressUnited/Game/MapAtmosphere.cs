@@ -45,6 +45,7 @@ namespace FortressUnited.Game
             if (map != null)
             {
                 MapLights.Build(map, sun);
+                MapScreens.Place(map);
                 CaptureReflections(map.transform);
             }
             return sun;

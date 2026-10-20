@@ -1,4 +1,4 @@
-texture,material,mode
+texture,material,mode,team
 # mode: replace (the material, tinted to the old texture's colour), detail (the old texture with the material's grain, relief and sheen), keep (as it was)
 # concrete slab walls with panel lines and team stripes: keep the lines, add the grain
 -0c2a4e_w1,Concrete036,detail
@@ -123,3 +123,6 @@ water4b,,keep
 black,,keep
 glass_bright,,keep
 glassblue1,,keep
+# TFC's team emblems: our team logos, glowing (fitted to each face by the loader)
+team1a,,logo,blue
+team2a,,logo,red
