@@ -67,7 +67,7 @@ namespace FortressUnited.Game
                 return;
             }
             Material = new Material(shader) { name = "RobotOverlay" };
-            Material.SetColor(ColourId, Colour * Intensity);
+            Material.SetColor(ColourId, TeamColours.Glow(Colour, Intensity));
             for (int i = 0; i < hits.Length; i++)
                 hits[i] = new Vector4(0, 0, 0, -1000);
             Material.SetVectorArray(HitPos, hits);

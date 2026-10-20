@@ -5,8 +5,8 @@ Cut a Meshy sentry gun into moving parts for Fortress United (run inside Blender
         --glb path/to/Meshy_AI_model.glb --level 1 --name Sentry_L1 \
         --out Assets/FortressUnited/Art/Sentry [--tris 40000] [--preview out.png]
 
-The model is centred on its base, turned so it faces -Y (Unity +Z), thinned,
-then split by region into a hierarchy the game drives:
+The model is centred on its base, turned so it faces -Y (Unity +Z), thinned
+(with the full-detail shape baked into its normal map), then split by region into a hierarchy the game drives:
 
     Sentry_LN
       Base                      static
@@ -263,8 +263,18 @@ def main():
     print(f"welded {nv - len(bm.verts)} duplicate vertices")
     bm.free()
 
-    # Thin it first (3M faces is slow to cut), parts get thinned again after
-    decimate(body, a.tris * 8)
+    # Keep the full-detail model, thin the whole thing to the final budget and bake
+    # the detail into a normal map before cutting: the map stays valid as parts move
+    sys.path.insert(0, os.path.dirname(__file__))
+    from prepare_model import bake_normals
+    high = body.copy()
+    high.data = body.data.copy()
+    bpy.context.scene.collection.objects.link(high)
+    decimate(body, a.tris)
+    body.data.materials.clear()
+    body.data.materials.append(bpy.data.materials.new(f"{a.name}_Body"))
+    bake_normals(high, body, os.path.join(a.out, f"{a.name}_Normal.png"), a.texsize)
+    bpy.data.objects.remove(high, do_unlink=True)
 
     c = centres(body)
     body.name = "Base"
@@ -386,12 +396,13 @@ def main():
         marker("RocketMuzzle", tip(rockets), rockets)
 
     total = 0
-    for nm, obj in parts.items():
-        total += decimate(obj, int(a.tris * budget[nm]))
+    for obj in parts.values():
+        obj.data.calc_loop_triangles()
+        total += len(obj.data.loop_triangles)
     print(f"triangles total {total}")
 
     # Smooth shading with sharp edges kept, one material named for the importer
-    mat = bpy.data.materials.new(f"{a.name}_Body")
+    mat = body.data.materials[0] if body.data.materials else bpy.data.materials.new(f"{a.name}_Body")
     for obj in parts.values():
         bpy.ops.object.select_all(action="DESELECT")
         obj.select_set(True)

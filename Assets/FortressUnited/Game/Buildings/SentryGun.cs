@@ -651,7 +651,7 @@ namespace FortressUnited.Game
             go.transform.SetPositionAndRotation(at, Quaternion.LookRotation(dir) * Quaternion.Euler(90, 0, 0));
             go.transform.localScale = new Vector3(0.06f, 0.12f, 0.06f);
             var mat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default"));
-            mat.color = Color.Lerp(team, Color.white, 0.6f) * 3;
+            mat.color = TeamColours.Glow(Color.Lerp(team, Color.white, 0.4f), 3);
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
             var light = new GameObject("Glow").AddComponent<Light>();
             light.transform.SetParent(go.transform, false);

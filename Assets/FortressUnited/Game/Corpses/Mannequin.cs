@@ -19,7 +19,7 @@ namespace FortressUnited.Game
             var suit = Lit(new Color(0.12f, 0.13f, 0.15f));
             var teamMat = Lit(team);
             teamMat.EnableKeyword("_EMISSION");
-            teamMat.SetColor("_EmissionColor", team * 1.5f);
+            teamMat.SetColor("_EmissionColor", TeamColours.Glow(team, 1.2f));
 
             Transform Bone(string name, Transform parent, Vector3 localPos)
             {

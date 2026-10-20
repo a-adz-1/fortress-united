@@ -6,7 +6,7 @@ Make a Meshy export game-ready for Fortress United (run inside Blender).
         --out Assets/FortressUnited/Art/Medkit --tris 30000 --width 0.42 \
         [--texsize 2048] [--screen 0.19,0.64,0,0.004] [--preview out.png]
         [--marker Arc_Top:0.232,0,0.020 ...] [--clear-box 0.176,0.235,-0.015,0.018]
-        [--glow red]
+        [--glow red] [--no-bake] [--gloss 0.75]
 
 --fbx may also be a .glb (Meshy's GLB download), whose textures are inside it.
 What it does:
@@ -30,6 +30,10 @@ What it does:
 - With --glow red|blue: the glowing parts Meshy painted in that colour become
   <Name>_Emission.png (a white mask the game tints per team) and turn dark
   glass in the base colour, so one model serves both teams.
+- Bakes the full-detail model's shape into <Name>_Normal.png for the thinned
+  one (Cycles, selected to active), so panel edges and bevels stay crisp at
+  a fraction of the triangles (--no-bake keeps Meshy's own normal map).
+- --gloss scales smoothness (Meshy's roughness reads too shiny in Unity).
 - Exports <Name>.fbx (metres, Unity axes) and optionally a preview render.
 
 The model is expected to face -Y in Blender (Meshy's default front).
@@ -56,6 +60,8 @@ def parse_args():
     p.add_argument("--marker", action="append", default=[])
     p.add_argument("--clear-box", action="append", default=[])
     p.add_argument("--glow", default="", choices=["", "red", "blue"])
+    p.add_argument("--no-bake", action="store_true")
+    p.add_argument("--gloss", type=float, default=0.75)
     return p.parse_args(argv)
 
 
@@ -71,6 +77,45 @@ def find_texture(folder, suffix):
         if suffix and stem.endswith(suffix):
             return os.path.join(folder, f)
     return None
+
+
+GLOSS = 0.75   # set from --gloss
+
+
+def bake_normals(high, low, path, size):
+    """Bakes the high-detail model's surface (shape and its own normal map) into a
+    tangent-space normal map for the low one, which must have UVs."""
+    import time
+    img = bpy.data.images.new("baked_normal", size, size, alpha=False)
+    img.colorspace_settings.name = "Non-Color"
+    mat = low.data.materials[0]
+    mat.use_nodes = True
+    node = mat.node_tree.nodes.new("ShaderNodeTexImage")
+    node.image = img
+    mat.node_tree.nodes.active = node
+    sc = bpy.context.scene
+    engine = sc.render.engine
+    sc.render.engine = "CYCLES"
+    sc.cycles.samples = 1
+    sc.cycles.device = "CPU"
+    bake = sc.render.bake
+    bake.use_selected_to_active = True
+    reach = max(low.dimensions)
+    bake.cage_extrusion = reach * 0.01
+    bake.max_ray_distance = reach * 0.03
+    bake.margin = 8
+    bpy.ops.object.select_all(action="DESELECT")
+    high.select_set(True)
+    low.select_set(True)
+    bpy.context.view_layer.objects.active = low
+    t = time.time()
+    bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT")
+    img.filepath_raw = path
+    img.file_format = "PNG"
+    img.save()
+    mat.node_tree.nodes.remove(node)
+    sc.render.engine = engine
+    print(f"baked normals in {time.time() - t:.1f} s")
 
 
 def save_resized(src, dst, size):
@@ -98,7 +143,7 @@ def pack_metallic_smoothness(metal_path, rough_path, dst, size):
     out[:, 0] = metal
     out[:, 1] = metal
     out[:, 2] = metal
-    out[:, 3] = 1.0 - rough
+    out[:, 3] = (1.0 - rough) * GLOSS
     img = bpy.data.images.new("ms", w, h, alpha=True)
     img.pixels[:] = out.ravel()
     img.filepath_raw = dst
@@ -206,7 +251,7 @@ def glb_textures(a):
         def pack(p):
             q = np.empty_like(p)
             q[:, 0] = q[:, 1] = q[:, 2] = p[:, 2]   # glTF: B = metallic
-            q[:, 3] = 1 - p[:, 1]                   # G = roughness
+            q[:, 3] = (1 - p[:, 1]) * a.gloss       # G = roughness
             return q
         write(mr, "_MetallicSmoothness", pack)
 
@@ -226,7 +271,9 @@ def add_screen(name, corners, material):
 
 
 def main():
+    global GLOSS
     a = parse_args()
+    GLOSS = a.gloss
     bpy.ops.wm.read_factory_settings(use_empty=True)
     if a.fbx.lower().endswith((".glb", ".gltf")):
         bpy.ops.import_scene.gltf(filepath=a.fbx)
@@ -261,6 +308,14 @@ def main():
     # glTF splits vertices along UV seams; weld them so decimating doesn't open cracks
     if a.fbx.lower().endswith((".glb", ".gltf")):
         weld(body)
+
+    # Keep the full-detail model to bake its shape from
+    high = None
+    if not a.no_bake:
+        high = body.copy()
+        high.data = body.data.copy()
+        high.name = "high"
+        bpy.context.scene.collection.objects.link(high)
 
     # Decimate
     body.data.calc_loop_triangles()
@@ -311,6 +366,10 @@ def main():
     mat = bpy.data.materials.new(f"{a.name}_Body")
     body.data.materials.clear()
     body.data.materials.append(mat)
+
+    if high is not None:
+        bake_normals(high, body, os.path.join(a.out, f"{a.name}_Normal.png"), a.texsize)
+        bpy.data.objects.remove(high, do_unlink=True)
 
     exported = [body]
     if a.screen:

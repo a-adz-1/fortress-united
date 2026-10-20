@@ -77,7 +77,7 @@ namespace FortressUnited.Game
             {
                 var m = r.material;
                 m.EnableKeyword("_EMISSION");
-                m.SetColor("_EmissionColor", team * 3);
+                m.SetColor("_EmissionColor", TeamColours.Glow(team, 1.6f));
                 g.glow = m;
             }
             g.lamp = new GameObject("Glow").AddComponent<Light>();
@@ -96,7 +96,7 @@ namespace FortressUnited.Game
             float rate = left < 1 ? 10 : left < 2 ? 5 : 2;
             bool on = Mathf.Repeat(Time.time * rate, 1) < 0.6f;
             if (glow != null)
-                glow.SetColor("_EmissionColor", Team * (on ? 4 : 0.6f));
+                glow.SetColor("_EmissionColor", TeamColours.Glow(Team, on ? 1.6f : 0.25f));
             lamp.intensity = on ? 1.2f : 0.2f;
 
             if (held && follow != null)
