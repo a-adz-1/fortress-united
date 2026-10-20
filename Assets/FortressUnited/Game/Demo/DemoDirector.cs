@@ -538,6 +538,7 @@ namespace FortressUnited.Game
             arms.LeftTarget = kit.LeftGrip;      // two-handed, like TFC's
             arms.LeftElbow = kit.LeftElbowHint;
             arms.MaxHandTurn = 150;              // fists upright on the side handles
+            arms.Follow = kit.Carry;             // arms push forward with the kit
             yield return new WaitForSeconds(1.0f);
             kit.Swing();
             yield return new WaitForSeconds(kit.Motion.SwingSeconds + 0.3f);

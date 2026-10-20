@@ -25,16 +25,18 @@ namespace FortressUnited.Game
         public TwoHandedMotion Both = ViewModelMotions.MedkitBoth;
         /// <summary>The side handles, for the arms to hold; and where the elbows should be.</summary>
         public Transform Grip { get; private set; }
+        /// <summary>The kit's carry point, which moves on a push (the arms ride with it).</summary>
+        public Transform Carry => carry;
         public Transform LeftGrip { get; private set; }
         public Transform ElbowHint { get; private set; }
         public Transform LeftElbowHint { get; private set; }
-        [Tooltip("Distance between the hands on TFC's medkit (scaled to our view), which the handles are sized to.")]
-        public float HandSpan = 0.30f;
+        [Tooltip("Width of TFC's medkit (scaled to our view), which ours is sized to.")]
+        public float HandSpan = 0.2f;
         /// <summary>A jab connected (heal a teammate, infect an enemy).</summary>
         public System.Action<RaycastHit> OnStrike;
         public float Reach = 1.3f;
-        [Tooltip("Lift on top of TFC's hold so the kit's screen shows (TFC's kit is smaller and screenless).")]
-        public Vector3 HoldShift = new Vector3(0, 0.11f, 0.05f);
+        [Tooltip("Lift on top of TFC's hold: TFC's kit sits half off the bottom of the screen; ours rises just enough for the screen to show.")]
+        public Vector3 HoldShift = new Vector3(0, 0.045f, 0.02f);
 
         Transform carry;
         float idleTime, swingT = -1;

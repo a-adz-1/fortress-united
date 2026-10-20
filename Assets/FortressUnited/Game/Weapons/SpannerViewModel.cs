@@ -32,6 +32,8 @@ namespace FortressUnited.Game
         public float Roll;
         [Tooltip("Shifts on top of the motion, for arms bulkier than TFC's (camera space, metres).")]
         public Vector3 HandShift, ElbowShift;
+        [Tooltip("Added to the pointing direction (camera space), e.g. to stand a short blade up clear of the fist.")]
+        public Vector3 DirShift;
         /// <summary>Where the elbow should be (for the arms' IK), moved with the motion.</summary>
         public Transform ElbowHint { get; private set; }
         float idleTime;
@@ -76,18 +78,50 @@ namespace FortressUnited.Game
         {
             var vm = CreateProd(prefab, cam, player, team, teamSkin);
             vm.name = "Killswitch (view model)";
-            vm.pivot.localScale = Vector3.one * 1.25f;
+            vm.FitLength(KnifeLength, 0.48f);
             vm.GripOffset = new Vector3(0.16f, -0.1f, 0.32f);
             vm.HoldAngles = new Vector3(-40, -22, -30);
             vm.pivot.localPosition = vm.GripOffset;
             vm.pivot.localRotation = Quaternion.Euler(vm.HoldAngles);
             vm.Reach = 1.0f;
             vm.Motion = ViewModelMotions.Killswitch;
+            vm.HandShift = new Vector3(-0.03f, 0.02f, 0);
+            vm.DirShift = new Vector3(-0.15f, 0.7f, 0);       // blade stands up out of the fist
+            vm.ElbowShift = new Vector3(0.04f, -0.22f, -0.04f);   // forearm up from under the fist, blade standing clear above it, as TFC's
             // No arc at all; the blade's own glow flares instead
             if (Application.isPlaying) Destroy(vm.Arc); else DestroyImmediate(vm.Arc);
             vm.Arc = null;
             vm.flashColour = team;
             return vm;
+        }
+
+        /// <summary>Tip to pommel of TFC's knife in view (metres); the killswitch is sized to it.</summary>
+        public const float KnifeLength = 0.3f;
+
+        /// <summary>
+        /// Scales the weapon so it measures this long along its pointing axis and,
+        /// if gripFromTip is set, slides it so the hand holds it that fraction of the
+        /// way back from the tip (a dagger is held right behind the blade, not by its end).
+        /// </summary>
+        public void FitLength(float length, float gripFromTip = -1)
+        {
+            pivot.localScale = Vector3.one;
+            float lo = float.MaxValue, hi = float.MinValue;
+            foreach (var mf in model.GetComponentsInChildren<MeshFilter>())
+            {
+                var b = mf.sharedMesh.bounds;
+                for (int c = 0; c < 8; c++)
+                {
+                    var corner = b.center + Vector3.Scale(b.extents, new Vector3((c & 1) == 0 ? -1 : 1, (c & 2) == 0 ? -1 : 1, (c & 4) == 0 ? -1 : 1));
+                    float z = pivot.InverseTransformPoint(mf.transform.TransformPoint(corner)).z;
+                    lo = Mathf.Min(lo, z); hi = Mathf.Max(hi, z);
+                }
+            }
+            if (hi <= lo)
+                return;
+            if (gripFromTip >= 0)
+                model.localPosition += Vector3.back * (hi - gripFromTip * (hi - lo));
+            pivot.localScale = Vector3.one * (length / (hi - lo));
         }
 
         bool zapOnly;
@@ -241,6 +275,7 @@ namespace FortressUnited.Game
             Motion.Pose(idleTime, swingTime, out var hand, out var dir, out var elbow);
             pivot.localPosition = hand + HandShift + sway;
             // Point along the weapon direction; keep "up" towards the top of the screen
+            dir = (dir + DirShift).normalized;
             pivot.localRotation = Quaternion.LookRotation(dir, Vector3.up) * Quaternion.Euler(0, 0, Roll);
             ElbowHint.localPosition = elbow + ElbowShift + sway;
         }

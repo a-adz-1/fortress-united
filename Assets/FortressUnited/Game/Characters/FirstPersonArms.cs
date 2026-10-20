@@ -16,7 +16,7 @@ namespace FortressUnited.Game
     public sealed class FirstPersonArms : MonoBehaviour
     {
         [Tooltip("Where the head bone sits relative to the camera (metres).")]
-        public Vector3 HeadOffset = new Vector3(0, -0.1f, -0.16f);
+        public Vector3 HeadOffset = new Vector3(0, -0.19f, -0.14f);
         public Transform RightTarget, LeftTarget;
         [Tooltip("Where the elbows should point (optional; otherwise down and out).")]
         public Transform RightElbow, LeftElbow;
@@ -24,6 +24,19 @@ namespace FortressUnited.Game
         public float HandScale = 0.65f;
         [Tooltip("How far the hand may turn from the forearm's line to follow a handle (degrees).")]
         public float MaxHandTurn = 50;
+        [Tooltip("The whole arm rig's size (first-person arms read better a little smaller).")]
+        public float ArmsScale = 0.7f;
+        /// <summary>
+        /// Something the arms ride along with (the repair kit when it's pushed
+        /// forward): its movement from where it was when set moves the arms too.
+        /// </summary>
+        public Transform Follow
+        {
+            get => follow;
+            set { follow = value; if (value != null) followRest = value.localPosition; }
+        }
+        Transform follow;
+        Vector3 followRest;
 
         Transform cam, head;
         Quaternion rootRest;    // the import's axis-conversion rotation on the model root
@@ -33,6 +46,7 @@ namespace FortressUnited.Game
         {
             public Transform Upper, Lower, Hand, Grip;
             public Quaternion UpperRest, LowerRest, HandRest;
+            public Vector3 UpperRestPos;
             public float LenA, LenB;
         }
 
@@ -51,6 +65,7 @@ namespace FortressUnited.Game
                 if (r is SkinnedMeshRenderer smr)
                     smr.updateWhenOffscreen = true;
             }
+            go.transform.localScale *= arms.ArmsScale;
             arms.head = arms.Find("Head");
             arms.right = arms.MakeArm("Right");
             arms.left = arms.MakeArm("Left");
@@ -76,6 +91,7 @@ namespace FortressUnited.Game
             a.UpperRest = a.Upper.localRotation;
             a.LowerRest = a.Lower.localRotation;
             a.HandRest = a.Hand.localRotation;
+            a.UpperRestPos = a.Upper.localPosition;
             a.LenA = Vector3.Distance(a.Upper.position, a.Lower.position);
             a.LenB = Vector3.Distance(a.Lower.position, a.Hand.position);
             return a;
@@ -87,7 +103,8 @@ namespace FortressUnited.Game
                 return;
             // Facing the way the camera looks, head at the camera
             transform.rotation = cam.rotation * rootRest;
-            transform.position += cam.TransformPoint(HeadOffset) - head.position;
+            Vector3 ride = follow != null ? follow.parent.TransformVector(follow.localPosition - followRest) : Vector3.zero;
+            transform.position += cam.TransformPoint(HeadOffset) + ride - head.position;
 
             Solve(right, RightTarget, RightElbow, 1);
             Solve(left, LeftTarget, LeftElbow, -1);
@@ -105,6 +122,7 @@ namespace FortressUnited.Game
             a.Upper.localRotation = a.UpperRest;
             a.Lower.localRotation = a.LowerRest;
             a.Hand.localRotation = a.HandRest;
+            a.Upper.localPosition = a.UpperRestPos;
             if (target == null)
                 return;
 
@@ -135,8 +153,16 @@ namespace FortressUnited.Game
         /// <summary>Two-bone IK: the wrist to a point, the elbow bending down and out.</summary>
         void Reach(Arm a, Vector3 goal, Transform elbowHint, float side)
         {
+            // TFC's view-model arms are long and hold weapons well out in front;
+            // ours are shorter, so when a target is out of reach the shoulder
+            // (behind the camera, never seen) slides towards it until the arm
+            // reaches with a little bend left in the elbow
+            float reach = (a.LenA + a.LenB) * 0.92f;
+            Vector3 toGoal = goal - a.Upper.position;
+            if (toGoal.magnitude > reach)
+                a.Upper.position += toGoal.normalized * (toGoal.magnitude - reach);
             Vector3 shoulder = a.Upper.position;
-            Vector3 toGoal = goal - shoulder;
+            toGoal = goal - shoulder;
             float d = Mathf.Clamp(toGoal.magnitude, Mathf.Abs(a.LenA - a.LenB) + 0.001f, a.LenA + a.LenB - 0.001f);
             Vector3 n = toGoal.normalized;
             Vector3 pole = elbowHint != null
