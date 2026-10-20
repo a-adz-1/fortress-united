@@ -135,8 +135,11 @@ Shader "FortressUnited/SciFiSurface"
                 float d = min(dx, dy);
                 float2 toEdge = dx < dy ? float2(f.x < 0.5 ? -1 : 1, 0) : float2(0, f.y < 0.5 ? -1 : 1);
                 float aa = max(fwidth(d), 1e-4);
-                float fade = saturate(1.6 - aa * 25);            // seams widen with distance, fading only far off
-                float gw = max(0.005, aa * 0.9);
+                // Fine detail fades out smoothly once it's smaller than a pixel, rather than
+                // being drawn a pixel wide (which crawls and flickers as the view moves)
+                float fade = saturate(2 - aa * 170);             // seams: gone by ~1.2 cm a pixel
+                float fineFade = saturate(2 - aa * 220);         // studs, slats, dots: gone by ~1 cm a pixel
+                const float gw = 0.006;
                 float groove = (1 - smoothstep(gw - aa, gw + aa, d)) * fade;
                 float bevel = (1 - smoothstep(0.006, 0.022, d)) * (1 - groove) * fade;
 
@@ -172,8 +175,8 @@ Shader "FortressUnited/SciFiSurface"
                     float2 half_ = cs * 0.5 - 0.12;
                     float inside = step(abs(c.x), half_.x) * step(abs(c.y), half_.y);
                     float slat = frac(c.y / 0.035);
-                    albedo = lerp(albedo, albedo * lerp(0.25, 0.6, step(0.45, slat)), inside);
-                    bump += float2(0, (slat < 0.45 ? -0.6 : 0.4)) * inside * fade;
+                    albedo = lerp(albedo, albedo * lerp(0.25, 0.6, lerp(0.45, step(0.45, slat), fineFade)), inside);
+                    bump += float2(0, (slat < 0.45 ? -0.6 : 0.4)) * inside * fineFade;
                     occl *= lerp(1, 0.6, inside);
                     smooth = lerp(smooth, 0.35, inside);
                 }
@@ -183,14 +186,14 @@ Shader "FortressUnited/SciFiSurface"
                     float2 g = frac(c / 0.05) - 0.5;
                     float r = length(g);
                     float stud = 1 - smoothstep(0.18, 0.28, r);
-                    bump += g * stud * 2.0 * fade;
-                    albedo *= 1 + 0.25 * stud;
+                    bump += g * stud * 2.0 * fineFade;
+                    albedo *= 1 + 0.25 * lerp(0.3, stud, fineFade);
                 }
                 else if (kind == 2 && h2 < _LightStrips)
                 {
                     // Ceiling light strip down the panel's middle
                     float strip = (1 - smoothstep(0.05, 0.06, abs(c.y))) * step(abs(c.x), cs.x * 0.5 - 0.15);
-                    glow += half3(2.4, 2.6, 2.8) * strip;
+                    glow += half3(1.3, 1.4, 1.55) * strip;
                     albedo = lerp(albedo, 0.9, strip);
                 }
                 // A continuous glowing seam along the top of each band row (team glow; faint and cool elsewhere)
@@ -198,9 +201,12 @@ Shader "FortressUnited/SciFiSurface"
                 {
                     float fy = frac(q.y);
                     float toSeam = row < 0.5 ? (1 - fy) * size.y : (row < 1.5 ? fy * size.y : 1);
-                    float lw = max(0.004, fwidth(q.y) * size.y * 0.8);      // at least most of a pixel, so it never breaks into dashes
-                    float seamLine = 1 - smoothstep(lw, lw * 2, toSeam);
-                    glow += seamGlow * seamLine * seamStrength * fade;
+                    // A 6 mm line; once thinner than a pixel it's drawn a pixel wide but dimmer,
+                    // keeping the same total light, so it stays a steady line instead of dashes
+                    float px = max(fwidth(q.y) * size.y, 1e-4);
+                    float lw = max(0.006, px);
+                    float seamLine = (1 - smoothstep(lw * 0.5, lw * 0.5 + px, toSeam)) * min(1, 0.006 / px * 1.5);
+                    glow += seamGlow * seamLine * seamStrength;
                 }
                 // Indicator lights: a little row of coloured dots near the corner of some wall panels
                 if (kind == 0 && h5 < 0.07 && cs.x > 0.5)
@@ -211,8 +217,8 @@ Shader "FortressUnited/SciFiSurface"
                     float dot_ = (1 - smoothstep(0.006, 0.009, length(dotP))) * step(0, k) * step(k, 2.5);
                     float pick = hash(id + k * 1.7);
                     half3 dc = pick < 0.4 ? half3(3.0, 0.9, 0.15) : (pick < 0.7 ? half3(0.3, 3.0, 0.6) : half3(3.0, 0.25, 0.2));
-                    float blink = step(0.25, frac(_Time.y * (0.3 + pick) + pick * 7));
-                    glow += dc * dot_ * blink;
+                    float pulse = 0.55 + 0.45 * sin(_Time.y * (1.2 + pick * 2) + pick * 20);     // a slow, soft pulse
+                    glow += dc * dot_ * pulse * fineFade;
                 }
                 float3 nOS = normalize(n + (tu * bump.x + tv * bump.y));
                 float3 normalWS = normalize(TransformObjectToWorldNormal(nOS));

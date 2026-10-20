@@ -33,8 +33,8 @@ namespace FortressUnited.Game
             RenderSettings.ambientMode = AmbientMode.Trilight;
             // Low ambient: rooms are lit by their own fixtures (MapLights), so interiors have mood
             RenderSettings.ambientSkyColor = new Color(0.36f, 0.4f, 0.54f);
-            RenderSettings.ambientEquatorColor = new Color(0.21f, 0.2f, 0.25f);
-            RenderSettings.ambientGroundColor = new Color(0.06f, 0.06f, 0.08f);
+            RenderSettings.ambientEquatorColor = new Color(0.27f, 0.26f, 0.31f);
+            RenderSettings.ambientGroundColor = new Color(0.11f, 0.11f, 0.13f);
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;

@@ -81,8 +81,8 @@ namespace FortressUnited.Game
             {
                 case "panel": MakePanels(mat, team, rgba, metal: false); return;
                 case "metal": MakePanels(mat, team, rgba, metal: true); return;
-                case "light": Glow(mat, original, 3.5f); return;
-                case "sign": Glow(mat, original, 1.2f); return;
+                case "light": Glow(mat, original, 1.6f); return;
+                case "sign": Glow(mat, original, 0.9f); return;
                 case "glass": MakeGlass(mat, team); return;
                 case "logo": MakeLogo(mat, team); return;
             }

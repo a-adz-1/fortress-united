@@ -58,10 +58,14 @@ namespace FortressUnited.Game
             foreach (var c in cells.Values)
             {
                 if (c.area <= 0) continue;
-                Vector3 pos = c.pos / c.area + c.normal.normalized * 0.35f;
+                // Out in the room, not hard against the fixture (point light falls off with the
+                // square of distance, so a light at the fixture burns the wall beside it)
+                Vector3 face = c.pos / c.area, n = c.normal.normalized;
+                float room = Physics.Raycast(face + n * 0.05f, n, out var hit, 6f) ? hit.distance : 6f;
+                Vector3 pos = face + n * Mathf.Clamp(room * 0.4f, 0.3f, 1.4f);
                 var colour = (Vector3)(c.colour / c.area);
                 float size = Mathf.Sqrt(c.area);
-                lights.Add((pos, ToColour(colour), Mathf.Clamp(5 + size * 6, 5, 18), Mathf.Clamp(1.2f + size * 1.5f, 1.2f, 4f)));
+                lights.Add((pos, ToColour(colour), Mathf.Clamp(7 + size * 6, 7, 20), Mathf.Clamp(0.7f + size * 0.7f, 0.7f, 2.2f)));
             }
             // Glow sprites and light entities
             foreach (var e in map.Bsp.Entities)

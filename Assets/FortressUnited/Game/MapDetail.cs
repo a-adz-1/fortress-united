@@ -188,7 +188,7 @@ namespace FortressUnited.Game
                 float stripH = height - bevel - 0.6f;
                 if (stripH > 0.3f)
                     g.Box(new Vector3(wall.x, floorY + 0.4f + stripH * 0.5f, wall.z) + inward * (depth + 0.006f),
-                          rot, new Vector3(0.01f, stripH, 0.035f));
+                          rot, new Vector3(0.016f, stripH, 0.05f));
                 // Chamfer at the top corner: a block turned 45 degrees across the corner
                 Vector3 corner = new Vector3(wall.x, top, wall.z) + inward * (bevel * 0.35f) - Vector3.up * (bevel * 0.35f);
                 var tilt = Quaternion.AngleAxis(inward == side ? -45 : 45, axis);
@@ -262,18 +262,18 @@ namespace FortressUnited.Game
             Vector3 lip = (from + to) * 0.5f - outward * 0.03f;
             var g = GlowAt(lip);
             // Glowing lip along the edge, and a light rail on posts
-            g.Box(lip + Vector3.up * 0.015f, rot, new Vector3(0.04f, 0.03f, len));
+            g.Box(lip + Vector3.up * 0.025f, rot, new Vector3(0.05f, 0.04f, len));
             metal.Box(lip + Vector3.up * 0.05f - outward * 0.03f, rot, new Vector3(0.1f, 0.1f, len));       // kerb
             int posts = Mathf.Max(2, Mathf.CeilToInt(len / 2f) + 1);
             for (int p = 0; p < posts; p++)
             {
                 Vector3 at = Vector3.Lerp(from, to, p / (float)(posts - 1)) - outward * 0.08f;
-                metal.Box(at + Vector3.up * 0.5f, rot, new Vector3(0.06f, 1.0f, 0.06f));
+                metal.Box(at + Vector3.up * 0.5f, rot, new Vector3(0.08f, 1.0f, 0.08f));
             }
             Vector3 mid = (from + to) * 0.5f - outward * 0.08f;
-            metal.Box(mid + Vector3.up * 1.0f, rot, new Vector3(0.07f, 0.05f, len));
-            g.Box(mid + Vector3.up * 0.97f, rot, new Vector3(0.03f, 0.012f, len));                          // glow under the top rail
-            metal.Box(mid + Vector3.up * 0.55f, rot, new Vector3(0.035f, 0.035f, len));                     // mid rail
+            metal.Box(mid + Vector3.up * 1.0f, rot, new Vector3(0.09f, 0.07f, len));
+            g.Box(mid + Vector3.up * 0.955f, rot, new Vector3(0.045f, 0.02f, len));                         // glow under the top rail
+            metal.Box(mid + Vector3.up * 0.55f, rot, new Vector3(0.05f, 0.05f, len));                       // mid rail
         }
 
         // ------------------------------------------------------------ door frames
@@ -308,13 +308,13 @@ namespace FortressUnited.Game
                     metal.Box(p, rot, new Vector3(post, s.y + post, depth));
                     // Glowing inner edge, both faces
                     foreach (float face in new[] { -1f, 1f })
-                        g.Box(b.center + across * sign * (width * 0.5f + 0.02f) + through * face * (depth * 0.5f + 0.004f) + Vector3.up * (b.min.y + s.y * 0.5f - b.center.y),
-                              rot, new Vector3(0.035f, s.y - 0.1f, 0.01f));
+                        g.Box(b.center + across * sign * (width * 0.5f + 0.03f) + through * face * (depth * 0.5f + 0.01f) + Vector3.up * (b.min.y + s.y * 0.5f - b.center.y),
+                              rot, new Vector3(0.05f, s.y - 0.1f, 0.02f));
                 }
                 Vector3 head = b.center + Vector3.up * (b.max.y + post * 0.5f - b.center.y);
                 metal.Box(head, rot, new Vector3(width + post * 2, post, depth));
                 foreach (float face in new[] { -1f, 1f })
-                    g.Box(head + through * face * (depth * 0.5f + 0.004f) - Vector3.up * (post * 0.5f - 0.02f), rot, new Vector3(width, 0.035f, 0.01f));
+                    g.Box(head + through * face * (depth * 0.5f + 0.01f) - Vector3.up * (post * 0.5f - 0.03f), rot, new Vector3(width, 0.05f, 0.02f));
                 count++;
             }
             return count;
