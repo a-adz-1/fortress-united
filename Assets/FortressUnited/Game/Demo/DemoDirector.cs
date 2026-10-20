@@ -731,12 +731,16 @@ namespace FortressUnited.Game
             var p = spec.Split(':');
             if (p.Length < 3 || int.Parse(p[0]) != frame) return;
             var c = System.Globalization.CultureInfo.InvariantCulture;
-            var ray = cam.ViewportPointToRay(new Vector3(float.Parse(p[1], c), 1 - float.Parse(p[2], c), 0));
-            var hits = Physics.RaycastAll(ray, 50);
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-            foreach (var h in hits)
-                Debug.Log($"Demo probe: {h.distance:0.000} m  {h.collider.name} (parent {h.collider.transform.parent?.name})  normal {h.normal}");
-            Debug.Log($"Demo probe: camera {cam.transform.position} ray {ray.direction}");
+            // frame:x:y[:x:y...]
+            for (int k = 1; k + 1 < p.Length; k += 2)
+            {
+                var ray = cam.ViewportPointToRay(new Vector3(float.Parse(p[k], c), 1 - float.Parse(p[k + 1], c), 0));
+                var hits = Physics.RaycastAll(ray, 50);
+                System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+                Debug.Log($"Demo probe at {p[k]},{p[k + 1]}:");
+                foreach (var h in hits)
+                    Debug.Log($"Demo probe: {h.distance:0.000} m  {h.collider.name} (parent {h.collider.transform.parent?.name})  normal {h.normal}  at {h.point}");
+            }
         }
 
         void Quit()

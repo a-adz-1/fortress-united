@@ -167,9 +167,18 @@ namespace FortressUnited.Game
             var tris = new List<int>();
             var logoBounds = fit ? LogoGroups(faces, w, h) : null;
 
+            bool seeThrough = texture.Name.StartsWith("{");
+            // Lights, signs and logos are often thin brushes laid flush on a wall or ceiling;
+            // drawn at the same depth they flicker against it, so they sit 4 mm proud
+            string mode = UseWorldMaterials ? WorldMaterials.ModeOf(texture.Name) : null;
+            bool decal = mode == "light" || mode == "sign" || mode == "logo";
             for (int fi = 0; fi < faces.Count; fi++)
             {
                 var f = faces[fi];
+                // The thin edges of a see-through grate slab show stray bits of its pattern
+                // flush against whatever it meets (window bars flickered at the lintel)
+                if (seeThrough && NarrowWidth(f) < 0.1f)
+                    continue;
                 var ti = Bsp.TexInfos[f.TexInfo];
                 var plane = Bsp.Planes[f.Plane];
                 Vec3 n = f.BackSide ? -plane.Normal : plane.Normal;
@@ -177,7 +186,7 @@ namespace FortressUnited.Game
                 int first = verts.Count;
                 foreach (var p in f.Points)
                 {
-                    verts.Add(GoldSrcSpace.ToUnity(p));
+                    verts.Add(GoldSrcSpace.ToUnity(p) + (decal ? un * 0.004f : Vector3.zero));
                     norms.Add(un);
                     float u = (Vec3.Dot(p, ti.S) + ti.SOffset) / w;
                     float v = (Vec3.Dot(p, ti.T) + ti.TOffset) / h;
@@ -225,6 +234,41 @@ namespace FortressUnited.Game
             mesh.RecalculateBounds();
             mesh.RecalculateTangents();     // for the materials' normal and detail maps
             return mesh;
+        }
+
+        /// <summary>A face's width across its narrower direction (m).</summary>
+        float NarrowWidth(BspFile.Face f)
+        {
+            var plane = Bsp.Planes[f.Plane];
+            Vector3 un = GoldSrcSpace.DirectionToUnity(plane.Normal);
+            Vector3 a = Vector3.Cross(un, Mathf.Abs(un.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+            Vector3 b = Vector3.Cross(un, a);
+            float minA = float.MaxValue, maxA = float.MinValue, minB = float.MaxValue, maxB = float.MinValue;
+            foreach (var p in f.Points)
+            {
+                var u = GoldSrcSpace.ToUnity(p);
+                minA = Mathf.Min(minA, Vector3.Dot(u, a)); maxA = Mathf.Max(maxA, Vector3.Dot(u, a));
+                minB = Mathf.Min(minB, Vector3.Dot(u, b)); maxB = Mathf.Max(maxB, Vector3.Dot(u, b));
+            }
+            return Mathf.Min(maxA - minA, maxB - minB);
+        }
+
+        /// <summary>
+        /// A see-through texture's clear pixels take the average colour of its solid ones
+        /// (they were the key colour, usually pure blue, which bled into the edges as a
+        /// coloured outline once the texture is filtered and mipmapped).
+        /// </summary>
+        static byte[] FillTransparent(byte[] rgba)
+        {
+            var copy = (byte[])rgba.Clone();
+            long r = 0, g = 0, b = 0, n = 0;
+            for (int i = 0; i + 3 < copy.Length; i += 4)
+                if (copy[i + 3] > 0) { r += copy[i]; g += copy[i + 1]; b += copy[i + 2]; n++; }
+            if (n == 0) return copy;
+            byte ar = (byte)(r / n), ag = (byte)(g / n), ab = (byte)(b / n);
+            for (int i = 0; i + 3 < copy.Length; i += 4)
+                if (copy[i + 3] == 0) { copy[i] = ar; copy[i + 1] = ag; copy[i + 2] = ab; }
+            return copy;
         }
 
         /// <summary>
@@ -299,7 +343,7 @@ namespace FortressUnited.Game
                     wrapMode = TextureWrapMode.Repeat,
                     anisoLevel = 4,
                 };
-                t2d.SetPixelData(mip.Rgba, 0);
+                t2d.SetPixelData(mip.Transparent ? FillTransparent(mip.Rgba) : mip.Rgba, 0);
                 t2d.Apply(true, true);
                 mat.SetTexture("_BaseMap", t2d);
                 mat.mainTexture = t2d;
@@ -309,6 +353,15 @@ namespace FortressUnited.Game
                     mat.SetFloat("_Cutoff", 0.5f);
                     mat.EnableKeyword("_ALPHATEST_ON");
                     mat.SetFloat("_Cull", (float)CullMode.Off);
+                    // Alpha to coverage: cut-out edges (grates, bars) are smoothed by MSAA
+                    // rather than popping pixel by pixel as the view moves
+                    mat.SetFloat("_AlphaToMask", 1);
+                    if (UseWorldMaterials)
+                    {
+                        // See-through grates and bars in one dark gunmetal: the old textures'
+                        // light-grey bar ends showed as specks where bars meet a lintel
+                        mat.SetColor("_BaseColor", new Color(0.13f, 0.135f, 0.15f));
+                    }
                 }
             }
             else

@@ -82,7 +82,7 @@ namespace FortressUnited.Game
                 case "panel": MakePanels(mat, team, rgba, metal: false); return;
                 case "metal": MakePanels(mat, team, rgba, metal: true); return;
                 case "light": Glow(mat, original, 1.6f); return;
-                case "sign": Glow(mat, original, 0.9f); return;
+                case "sign": MakeHoloSign(mat, rgba, texWidth, texHeight); return;
                 case "glass": MakeGlass(mat, team); return;
                 case "logo": MakeLogo(mat, team); return;
             }
@@ -238,6 +238,85 @@ namespace FortressUnited.Game
             mat.SetColor("_EmissionColor", c * 0.8f);
             mat.SetTextureScale("_BaseMap", Vector2.one);
             mat.SetTextureOffset("_BaseMap", Vector2.zero);
+        }
+
+        /// <summary>
+        /// A sign redrawn as a holographic display: the old sign's text and symbols
+        /// (everything that stands out from its background colour) glow on dark glass,
+        /// with faint scan lines and an edge line. Team signs glow in their team's
+        /// colour (from the text's own colour), yellow signs amber, the rest cyan. The
+        /// symbol shapes are upscaled and sharpened so edges stay clean.
+        /// </summary>
+        static void MakeHoloSign(Material mat, byte[] rgba, int w, int h)
+        {
+            if (rgba == null || rgba.Length < w * h * 4)
+                return;
+            // Background: the most typical colour (per-channel median)
+            int[] bg = new int[3];
+            for (int ch = 0; ch < 3; ch++)
+            {
+                var hist = new int[256];
+                for (int i = ch; i < w * h * 4; i += 4) hist[rgba[i]]++;
+                int half = w * h / 2, sum = 0;
+                for (int v = 0; v < 256; v++) { sum += hist[v]; if (sum >= half) { bg[ch] = v; break; } }
+            }
+            var mask = new float[w * h];
+            double mr = 0, mg = 0, mb = 0, mn = 0;
+            for (int k = 0; k < w * h; k++)
+            {
+                int i = k * 4;
+                float d = Mathf.Max(Mathf.Abs(rgba[i] - bg[0]), Mathf.Max(Mathf.Abs(rgba[i + 1] - bg[1]), Mathf.Abs(rgba[i + 2] - bg[2]))) / 255f;
+                mask[k] = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(0.15f, 0.35f, d));
+                if (mask[k] > 0.5f) { mr += rgba[i]; mg += rgba[i + 1]; mb += rgba[i + 2]; mn++; }
+            }
+            // The glow colour, from the symbols' own colour
+            Color glow = new Color(0.45f, 0.9f, 1f) * 1.6f;
+            if (mn > 0)
+            {
+                float r = (float)(mr / mn) / 255f, g = (float)(mg / mn) / 255f, b = (float)(mb / mn) / 255f;
+                if (b > r * 1.3f && b > g) glow = TeamColours.Glow(TeamColours.For(TeamColours.Team.Blue), 1.6f);
+                else if (r > g * 1.4f && r > b * 1.4f) glow = TeamColours.Glow(TeamColours.For(TeamColours.Team.Red), 1.6f);
+                else if (r > 0.55f && g > 0.45f && b < 0.35f) glow = new Color(1f, 0.7f, 0.2f) * 1.6f;
+            }
+            // Upscale the symbol mask, sharpening its edges
+            int k2 = Mathf.Clamp(512 / Mathf.Max(w, h), 1, 4);
+            int W = w * k2, H = h * k2;
+            var px = new Color32[W * H];
+            Color edgeCol = glow * 0.5f;
+            for (int y = 0; y < H; y++)
+            {
+                float sy = (y + 0.5f) / k2 - 0.5f;
+                int y0 = Mathf.Clamp(Mathf.FloorToInt(sy), 0, h - 1), y1 = Mathf.Min(y0 + 1, h - 1);
+                float fy = Mathf.Clamp01(sy - y0);
+                float scan = 0.82f + 0.18f * ((y / 2) % 2);
+                for (int x = 0; x < W; x++)
+                {
+                    float sx = (x + 0.5f) / k2 - 0.5f;
+                    int x0 = Mathf.Clamp(Mathf.FloorToInt(sx), 0, w - 1), x1 = Mathf.Min(x0 + 1, w - 1);
+                    float fx = Mathf.Clamp01(sx - x0);
+                    float m = Mathf.Lerp(Mathf.Lerp(mask[y0 * w + x0], mask[y0 * w + x1], fx), Mathf.Lerp(mask[y1 * w + x0], mask[y1 * w + x1], fx), fy);
+                    m = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(0.35f, 0.65f, m));
+                    bool edge = x < 2 || y < 2 || x >= W - 2 || y >= H - 2;
+                    Color c = glow * (m * scan) + glow * 0.05f;               // the glass glows faintly all over
+                    if (edge) c = Color.Lerp(c, edgeCol, 0.8f);
+                    // Stored as LDR; brightness comes from the material's emission strength
+                    float top = Mathf.Max(c.r, Mathf.Max(c.g, c.b), 1f);
+                    px[y * W + x] = new Color32((byte)(255 * c.r / top), (byte)(255 * c.g / top), (byte)(255 * c.b / top), 255);
+                }
+            }
+            var tex = new Texture2D(W, H, TextureFormat.RGBA32, true)
+            {
+                name = "Holo Sign", filterMode = FilterMode.Trilinear, anisoLevel = 8, wrapMode = TextureWrapMode.Repeat,
+            };
+            tex.SetPixels32(px);
+            tex.Apply(true, true);
+            mat.SetTexture("_BaseMap", null);
+            mat.SetColor("_BaseColor", new Color(0.015f, 0.02f, 0.03f));
+            mat.SetFloat("_Smoothness", 0.92f);
+            mat.SetFloat("_Metallic", 0);
+            mat.EnableKeyword("_EMISSION");
+            mat.SetTexture("_EmissionMap", tex);
+            mat.SetColor("_EmissionColor", Color.white * 1.5f);
         }
 
         /// <summary>Windows: tinted, see-through and glossy.</summary>
