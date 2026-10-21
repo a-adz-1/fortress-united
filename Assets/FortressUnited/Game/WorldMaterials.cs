@@ -366,6 +366,8 @@ namespace FortressUnited.Game
             mat.SetTexture("_FloorNrm", f.GetTexture("_BumpMap"));
             mat.SetTexture("_FloorMet", f.GetTexture("_MetallicGlossMap"));
             mat.SetVector("_FloorCrop", floor.crop);
+            // Outdoors: the floor set's calmest plate (Floor_01's bottom-left square, Floor_02's top-left plate)
+            mat.SetVector("_OutdoorFloorCrop", floor.set == "Floor_01" ? new Vector4(0f, 0f, 0.5f, 0.5f) : new Vector4(0f, 0.5f, 0.5f, 1f));
             // Ceilings: the rail strips (from Floor_01); when the floor set differs the
             // ceiling uses the floor set's own plate instead
             mat.SetVector("_CeilCrop", floor.set == "Floor_01" ? new Vector4(0f, 0.5f, 0.5f, 1f) : floor.crop);

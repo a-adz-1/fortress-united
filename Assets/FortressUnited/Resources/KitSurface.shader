@@ -20,6 +20,8 @@ Shader "FortressUnited/KitSurface"
         _FloorCrop ("Floor module (u0 v0 u1 v1)", Vector) = (0, 0, 0.5, 0.5)
         _CeilCrop ("Ceiling module (u0 v0 u1 v1)", Vector) = (0, 0.5, 0.5, 1)
         _FloorModule ("Floor module size (m)", Float) = 2.4
+        _OutdoorFloorCrop ("Outdoor floor module: the calmest plate (u0 v0 u1 v1)", Vector) = (0, 0, 0.5, 0.5)
+        _OutdoorFloorModule ("Outdoor floor module size (m)", Float) = 4.8
         _Tone ("Brightness", Float) = 1
         _Accent ("Team paint on this texture (0/1)", Float) = 0
         _AccentColor ("Its team paint", Color) = (0.06, 0.59, 0.91, 1)
@@ -55,7 +57,8 @@ Shader "FortressUnited/KitSurface"
             CBUFFER_START(UnityPerMaterial)
                 float4 _WallAlb_ST, _FloorAlb_ST;
                 float4 _WallCrop, _WallModule, _FloorCrop, _CeilCrop;
-                float _FloorModule, _Tone, _Accent;
+                float4 _OutdoorFloorCrop;
+                float _FloorModule, _OutdoorFloorModule, _Tone, _Accent;
                 half4 _AccentColor;
             CBUFFER_END
 
@@ -84,7 +87,7 @@ Shader "FortressUnited/KitSurface"
                 weight = saturate(((d2 - d1) / max(d1 + d2, 1) - 0.1) * 30);
             }
 
-            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 face : TEXCOORD1; };
+            struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 face : TEXCOORD1; float2 flags : TEXCOORD2; };
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
@@ -93,6 +96,7 @@ Shader "FortressUnited/KitSurface"
                 float3 normalOS : TEXCOORD2;
                 float floorY : TEXCOORD3;
                 half fog : TEXCOORD4;
+                float outdoors : TEXCOORD5;
             };
 
             Varyings vert(Attributes v)
@@ -102,6 +106,7 @@ Shader "FortressUnited/KitSurface"
                 o.positionOS = v.positionOS.xyz;
                 o.normalOS = v.normalOS;
                 o.floorY = v.face.y;
+                o.outdoors = v.flags.x;
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.fog = ComputeFogFactor(o.positionCS.z);
                 return o;
@@ -127,9 +132,13 @@ Shader "FortressUnited/KitSurface"
                 }
                 else
                 {
-                    m = float2(dot(i.positionOS, tu), dot(i.positionOS, tv)) / _FloorModule;
-                    crop = kind == 1 ? _FloorCrop : _CeilCrop;
+                    bool outFloor = kind == 1 && i.outdoors > 0.5;
+                    m = float2(dot(i.positionOS, tu), dot(i.positionOS, tv)) / (outFloor ? _OutdoorFloorModule : _FloorModule);
+                    crop = outFloor ? _OutdoorFloorCrop : (kind == 1 ? _FloorCrop : _CeilCrop);
                 }
+                // Outdoor walls above the first module: plain big panels (drawn below), the kit's
+                // detail kept to a band along the ground
+                bool plainWall = kind == 0 && i.outdoors > 0.5 && m.y > 1;
                 float2 size = crop.zw - crop.xy;
                 // Walls taller than one module: above the first, repeat only the module's upper
                 // part (its plain panelling), so floor-level details (lights, vents) stay at the floor
@@ -155,6 +164,13 @@ Shader "FortressUnited/KitSurface"
 
                 // The kit's red accents in the team's colour (steel between the bases)
                 half3 c = alb.rgb;
+                if (kind == 1 && i.outdoors > 0.5)
+                {
+                    // Calmer outdoor plates: half the contrast
+                    half mean = 0.42;
+                    c = lerp(half3(mean, mean, mean) * normalize(c + 1e-3) * 1.732, c, 0.5);
+                    nrm.xy *= 0.6;
+                }
                 float red = saturate((c.r - max(c.g, c.b) * 1.6) * 6) * step(0.25, c.r);
                 int team; float teamW;
                 TeamAt(i.positionWS, team, teamW);
@@ -164,6 +180,23 @@ Shader "FortressUnited/KitSurface"
                 c = lerp(c, paint * (lum / 0.27), red);
                 c *= _Tone;
 
+                if (plainWall)
+                {
+                    // Large plain panels: 3.6 x 1.8 m from the floor, fine seams, a dark trim
+                    // line where the kit band ends, a slight tone per panel
+                    float2 q = float2(dot(i.positionOS, tu) / 3.6, (i.positionOS.y - i.floorY - _WallModule.y) / 1.8);
+                    float2 f = frac(q);
+                    float px = max(fwidth(q.y) * 1.8, 1e-4);
+                    float dx = min(f.x, 1 - f.x) * 3.6, dy = min(f.y, 1 - f.y) * 1.8;
+                    float d = min(dx, dy);
+                    float seam = (1 - smoothstep(0.006 - px, 0.006 + px * 1.5, d)) * saturate(2 - px / 0.012);
+                    float trim = 1 - smoothstep(0.05, 0.06, abs(i.positionOS.y - i.floorY - _WallModule.y));
+                    float cell = frac(sin(dot(floor(q), float2(12.9898, 78.233))) * 43758.5453);
+                    c = half3(0.66, 0.67, 0.7) * (0.95 + 0.07 * cell) * (1 - seam * 0.35) * (1 - trim * 0.75);
+                    nrm = half3(0, 0, 1);
+                    illum = 0;
+                    met = 0.15;
+                }
                 float3 nOS = normalize(n + tu * nrm.x + tv * nrm.y);
                 float3 normalWS = normalize(TransformObjectToWorldNormal(nOS));
 

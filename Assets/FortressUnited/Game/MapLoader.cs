@@ -54,9 +54,10 @@ namespace FortressUnited.Game
         };
 
         readonly Dictionary<int, Material> materials = new Dictionary<int, Material>();
-        // Wall faces whose floor height (uv1.y) is found once all the map's colliders exist
-        readonly List<(List<Vector2> sizes, int first, int count, Vector3 bottom, Vector3 normal)> floorRefs = new List<(List<Vector2>, int, int, Vector3, Vector3)>();
-        readonly Dictionary<List<Vector2>, Mesh> pendingMeshes = new Dictionary<List<Vector2>, Mesh>();
+        // Faces whose floor height (uv1.y) and indoors/outdoors (uv2.x) are found once all the map's colliders exist
+        readonly List<(List<Vector2> sizes, List<Vector2> flags, int first, int count, Vector3 bottom, Vector3 centre, Vector3 normal)> faceRefs =
+            new List<(List<Vector2>, List<Vector2>, int, int, Vector3, Vector3, Vector3)>();
+        readonly Dictionary<List<Vector2>, (Mesh mesh, List<Vector2> flags)> pendingMeshes = new Dictionary<List<Vector2>, (Mesh, List<Vector2>)>();
         TextureSource textures;
 
         public bool Load()
@@ -188,6 +189,7 @@ namespace FortressUnited.Game
             var norms = new List<Vector3>();
             var uvs = new List<Vector2>();
             var sizes = new List<Vector2>();      // each face's narrower width (m), for the surface shader
+            var flags = new List<Vector2>();      // x: 1 if the face is outdoors (open sky above), found once the map is built
             var tris = new List<int>();
             var logoBounds = fit || stretch ? LogoGroups(faces, w, h) : null;
 
@@ -241,9 +243,12 @@ namespace FortressUnited.Game
                 }
                 bottom /= verts.Count - first;
                 for (int k = first; k < verts.Count; k++)
+                {
                     sizes.Add(new Vector2(narrow, minY));        // y: the face's bottom, refined to the floor below once the map is built
-                if (Mathf.Abs(un.y) < 0.3f)
-                    floorRefs.Add((sizes, first, verts.Count - first, new Vector3(bottom.x, minY, bottom.z), un));
+                    flags.Add(Vector2.zero);
+                }
+                if (un.y > -0.7f)
+                    faceRefs.Add((sizes, flags, first, verts.Count - first, new Vector3(bottom.x, minY, bottom.z), bottom, un));
                 // Fan triangulation; wind so the front faces the normal in Unity space
                 for (int k = 1; k + 1 < f.Points.Length; k++)
                 {
@@ -266,7 +271,8 @@ namespace FortressUnited.Game
             mesh.SetNormals(norms);
             mesh.SetUVs(0, uvs);
             mesh.SetUVs(1, sizes);
-            pendingMeshes[sizes] = mesh;
+            mesh.SetUVs(2, flags);
+            pendingMeshes[sizes] = (mesh, flags);
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             mesh.RecalculateTangents();     // for the materials' normal and detail maps
@@ -275,25 +281,42 @@ namespace FortressUnited.Game
 
         /// <summary>
         /// The floor under each wall face (the compiler splits tall walls into pieces;
-        /// each piece should know where the real floor is, so wall art lines up with it).
+        /// each piece should know where the real floor is, so wall art lines up with it),
+        /// and whether each face is outdoors (open sky above), for the surface shaders.
         /// </summary>
         void FindFloors()
         {
             var changed = new HashSet<List<Vector2>>();
-            foreach (var (sizes, first, count, bottom, normal) in floorRefs)
+            foreach (var (sizes, flags, first, count, bottom, centre, normal) in faceRefs)
             {
-                Vector3 from = transform.TransformPoint(bottom) + normal * 0.25f + Vector3.up * 0.2f;
-                if (!Physics.Raycast(from, Vector3.down, out var hit, 40f)) continue;
-                float floorY = transform.InverseTransformPoint(hit.point).y;
-                if (floorY > bottom.y + 0.05f) continue;
+                bool wall = Mathf.Abs(normal.y) < 0.3f;
+                // Outdoors: open sky straight above the face (a step out from it, for walls)
+                Vector3 top = transform.TransformPoint(centre) + normal * (wall ? 0.3f : 0.05f) + Vector3.up * 0.1f;
+                bool outdoors = !Physics.Raycast(top, Vector3.up, 80f);
+                float floorY = sizes[first].y;
+                if (wall)
+                {
+                    Vector3 from = transform.TransformPoint(bottom) + normal * 0.25f + Vector3.up * 0.2f;
+                    if (Physics.Raycast(from, Vector3.down, out var hit, 40f))
+                    {
+                        float y = transform.InverseTransformPoint(hit.point).y;
+                        if (y <= bottom.y + 0.05f) floorY = y;
+                    }
+                }
                 for (int k = first; k < first + count; k++)
+                {
                     sizes[k] = new Vector2(sizes[k].x, floorY);
+                    flags[k] = new Vector2(outdoors ? 1 : 0, 0);
+                }
                 changed.Add(sizes);
             }
             foreach (var sizes in changed)
-                if (pendingMeshes.TryGetValue(sizes, out var mesh))
-                    mesh.SetUVs(1, sizes);
-            floorRefs.Clear();
+                if (pendingMeshes.TryGetValue(sizes, out var m))
+                {
+                    m.mesh.SetUVs(1, sizes);
+                    m.mesh.SetUVs(2, m.flags);
+                }
+            faceRefs.Clear();
             pendingMeshes.Clear();
         }
 
