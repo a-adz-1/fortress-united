@@ -200,6 +200,7 @@
 		"auto" : "Auto (the map's sky if it's dark, e.g. space; else the modern day sky)"
 		"map" : "The map's own sky (skyname)"
 		"procedural" : "The modern day sky"
+		"space" : "The modern space sky (stars, nebula, gas giant)"
 	]
 	fu_sun(string) : "FU: sun angle 'pitch yaw' (overrides light_environment)"
 	fu_suncolor(color255) : "FU: sun colour"
@@ -371,6 +372,66 @@
 [
 	angles(string) : "Pitch Yaw Roll (yaw = the way it faces)" : "0 0 0"
 	width(integer) : "Width (units)" : 64
+]
+
+@PointClass size(-8 -8 -8, 8 8 8) color(255 230 160) = fu_light : "FU: light with real shadows (point or spot)"
+[
+	_light(color255) : "Colour and brightness (r g b brightness)" : "255 255 255 200"
+	type(choices) : "Type" : "point" = [ "point" : "Point" "spot" : "Spotlight" ]
+	angles(string) : "Spot direction 'pitch yaw roll' (pitch -90 = down)" : "-90 0 0"
+	_cone(integer) : "Spot inner angle" : 30
+	_cone2(integer) : "Spot outer angle" : 45
+	range(integer) : "Range (units)" : 400
+	shadows(choices) : "Shadows" : 1 = [ 1 : "Soft shadows" 0 : "None (cheaper)" ]
+	effect(choices) : "Effect" : "none" =
+	[
+		"none" : "Steady"
+		"flicker" : "Flicker (failing tube)"
+		"pulse" : "Pulse"
+		"strobe" : "Strobe"
+		"candle" : "Candle / fire"
+	]
+	speed(string) : "Effect speed" : "1"
+]
+
+@PointClass base(Team) size(-16 -16 0, 16 16 32) color(180 180 200) = fu_prop : "FU: prop from the prop library (stands on its origin; doesn't collide)"
+[
+	model(choices) : "Model" : "crate" =
+	[
+		"crate" : "Crate"
+		"crate_tall" : "Tall crate"
+		"barrel" : "Barrel"
+		"console" : "Console"
+		"pipes" : "Pipe run (2 m)"
+		"tank" : "Storage tank"
+		"antenna" : "Antenna with beacon"
+		"container" : "Shipping container"
+		"pillar" : "Pillar"
+		"light_post" : "Light post"
+	]
+	angles(string) : "Pitch Yaw Roll (yaw = facing)" : "0 0 0"
+	scale(string) : "Scale" : "1"
+	rendercolor(color255) : "Glow colour (blank = team colour)"
+]
+
+@PointClass size(-8 -8 -8, 8 8 8) color(200 255 200) = fu_particles : "FU: particle effect"
+[
+	effect(choices) : "Effect" : "steam" =
+	[
+		"steam" : "Steam"
+		"smoke" : "Smoke"
+		"sparks" : "Sparks (with flicker light)"
+		"embers" : "Embers"
+		"dust" : "Floating dust"
+		"drips" : "Drips"
+		"hologram" : "Hologram column"
+		"fire" : "Fire (with light)"
+	]
+	angles(string) : "Direction 'pitch yaw roll' (blank = up)"
+	rendercolor(color255) : "Colour (blank = the effect's own)"
+	rate(string) : "Amount (multiplier)" : "1"
+	size(string) : "Size (multiplier)" : "1"
+	radius(integer) : "Area it comes from (units)" : 4
 ]
 
 @SolidClass base(Team) = fu_teamzone : "FU: this volume is a team's base (team colours, light tint, screens)"

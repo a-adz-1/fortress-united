@@ -77,7 +77,9 @@ namespace FortressUnited.Game
 
             var loader = gameObject.AddComponent<MapLoader>();
             loader.MapPath = MapPath;
-            loader.UseWorldMaterials = !OriginalTextures && !KeepTextures;
+            loader.UseWorldMaterials = !OriginalTextures;
+            WorldMaterials.Restyle = !KeepTextures;
+            loader.KeepRestyleSetting = true;
             if (!loader.Load())
             {
                 Debug.LogError("Demo: map didn't load");
@@ -545,6 +547,32 @@ namespace FortressUnited.Game
                 if (!seen.Add(team)) continue;
                 Vector3 at = scr.position, from = scr.position + scr.forward * 2.3f + scr.right * 0.6f - Vector3.up * 0.15f;
                 shot = time => (from - scr.right * time * 0.35f, at);
+                shotStart = Time.time;
+                yield return new WaitForSeconds(3f);
+            }
+
+            // A space sky: look up at its planet from the open area
+            var skyMat = RenderSettings.skybox;
+            if (skyMat != null && skyMat.HasProperty("_PlanetDir"))
+            {
+                Vector3 p = skyMat.GetVector("_PlanetDir");
+                Vector3 eye0 = origin + Vector3.up * 1.7f;
+                Vector3 sideways = Vector3.Cross(Vector3.up, p).normalized;
+                shot = time => (eye0 + sideways * time * 0.3f, eye0 + (p + sideways * (time * 0.03f - 0.05f)) * 50);
+                shotStart = Time.time;
+                yield return new WaitForSeconds(3f);
+            }
+
+            // Mapper props and effects (fu_prop, fu_particles), close up: from 3 m off, at head height
+            int extraShots = 0;
+            foreach (Transform t in GetComponent<MapLoader>().transform)
+            {
+                if (!(t.name.StartsWith("fu_prop") || t.name.StartsWith("fu_particles")) || extraShots++ >= 2) continue;
+                Vector3 at = t.position + Vector3.up * 0.6f;
+                Vector3 off = new Vector3(Mathf.Sin(extraShots * 2.1f), 0, Mathf.Cos(extraShots * 2.1f)) * 3f;
+                Vector3 from = at + off + Vector3.up * 1.0f;
+                Vector3 side = Vector3.Cross(Vector3.up, off).normalized;
+                shot = time => (from + side * time * 0.4f, at);
                 shotStart = Time.time;
                 yield return new WaitForSeconds(3f);
             }

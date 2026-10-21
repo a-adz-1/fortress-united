@@ -44,3 +44,9 @@ mono_crash.*
 # World materials: downloaded by tools/materials/fetch.py (CC0, ambientCG)
 /Assets/FortressUnited/Resources/WorldMaterials/
 /Assets/FortressUnited/Resources/WorldMaterials.meta
+
+# Asset Store packs: their licence forbids redistributing them; each developer imports their own
+/Assets/Creepy_Cat/
+/Assets/Creepy_Cat.meta
+/Assets/FortressUnited/Resources/ThirdParty/
+/Assets/FortressUnited/Resources/ThirdParty.meta

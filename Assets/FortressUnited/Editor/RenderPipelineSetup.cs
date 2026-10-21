@@ -94,6 +94,12 @@ namespace FortressUnited.EditorTools
             asset.shadowDistance = 70;
             asset.shadowCascadeCount = 4;
             asset.mainLightShadowmapResolution = 4096;
+            // Mappers' fu_light lights cast soft shadows too
+            var so = new SerializedObject(asset);
+            so.FindProperty("m_AdditionalLightShadowsSupported").boolValue = true;
+            so.FindProperty("m_SoftShadowsSupported").boolValue = true;
+            so.FindProperty("m_AdditionalLightsShadowmapResolution").intValue = 4096;
+            so.ApplyModifiedPropertiesWithoutUndo();
             AddDecals(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));
             AddAmbientOcclusion(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));
             UseForwardPlus(AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath));

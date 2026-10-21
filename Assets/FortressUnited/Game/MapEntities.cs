@@ -15,6 +15,9 @@ namespace FortressUnited.Game
     /// <item>fu_teamzone (brush): this volume is a team's base (team bands, light tint, screens)</item>
     /// <item>fu_norail (brush): no automatic railings in here</item>
     /// <item>fu_nodetail (brush): no automatic railings, ribs or door frames in here</item>
+    /// <item>fu_light (point): a light with real shadows, point or spot, with effects</item>
+    /// <item>fu_prop (point): a model from the prop library (PropLibrary)</item>
+    /// <item>fu_particles (point): a particle effect (MapParticles)</item>
     /// </list>
     /// The brush volumes aren't drawn and don't collide.
     /// </summary>
@@ -153,6 +156,142 @@ namespace FortressUnited.Game
             return n;
         }
 
+        /// <summary>
+        /// The mapper's lights (fu_light): point or spot, with real soft shadows and an
+        /// optional effect. Keys follow Hammer's light entities: _light "r g b brightness",
+        /// _cone / _cone2 (spot inner / outer angle), angles (spot direction), plus range,
+        /// shadows and effect.
+        /// </summary>
+        public static int BuildLights(MapLoader map)
+        {
+            int n = 0;
+            foreach (var e in map.Bsp.Entities)
+            {
+                if (e.ClassName != "fu_light") continue;
+                var l = new GameObject("fu_light").AddComponent<Light>();
+                l.transform.SetParent(map.transform, false);
+                l.transform.position = GoldSrcSpace.ToUnity(Vec(e.Get("origin")));
+                var c = Vec4(e.Get("_light"));
+                l.color = c.x + c.y + c.z > 0 ? new Color(c.x / 255f, c.y / 255f, c.z / 255f) : Color.white;
+                l.intensity = (c.w > 0 ? c.w : 200) / 100f;
+                l.range = Num(e.Get("range"), 400) * Inch;
+                bool spot = e.Get("type").Equals("spot", StringComparison.OrdinalIgnoreCase) || e.Get("_cone") != "";
+                if (spot)
+                {
+                    l.type = LightType.Spot;
+                    float outer = Num(e.Get("_cone2"), Num(e.Get("_cone"), 30) + 15);
+                    l.spotAngle = Mathf.Clamp(outer * 2, 1, 179);
+                    l.innerSpotAngle = Mathf.Clamp(Num(e.Get("_cone"), 30) * 2, 0, l.spotAngle);
+                    l.transform.rotation = Quaternion.LookRotation(Aim(e), Vector3.up);
+                }
+                else
+                    l.type = LightType.Point;
+                l.shadows = Num(e.Get("shadows"), 1) > 0 ? LightShadows.Soft : LightShadows.None;
+                l.shadowBias = 0.02f;
+                l.shadowNormalBias = 0.3f;
+                l.renderMode = LightRenderMode.ForcePixel;
+                string effect = e.Get("effect").ToLowerInvariant();
+                if (effect != "" && effect != "none")
+                {
+                    var fx = l.gameObject.AddComponent<LightEffect>();
+                    fx.Effect = effect;
+                    fx.Speed = Num(e.Get("speed"), 1);
+                }
+                n++;
+            }
+            return n;
+        }
+
+        /// <summary>
+        /// The mapper's props (fu_prop): a model from the prop library by name, standing on
+        /// the entity's origin and facing its yaw; scale; glow accent in the team colour
+        /// (team_no, or the base it's in) or rendercolor. Props don't collide.
+        /// </summary>
+        public static int BuildProps(MapLoader map)
+        {
+            int n = 0;
+            foreach (var e in map.Bsp.Entities)
+            {
+                if (e.ClassName != "fu_prop") continue;
+                Vector3 at = GoldSrcSpace.ToUnity(Vec(e.Get("origin")));
+                var prop = PropLibrary.Make(e.Get("model"), AccentColour(e, at));
+                if (prop == null)
+                {
+                    Debug.LogWarning($"Fortress United: fu_prop model '{e.Get("model")}' isn't in the prop library");
+                    continue;
+                }
+                prop.name = "fu_prop " + e.Get("model");
+                prop.transform.SetParent(map.transform, false);
+                prop.transform.position = at;
+                prop.transform.rotation = Quaternion.LookRotation(Facing(e), Vector3.up);
+                prop.transform.localScale = Vector3.one * Num(e.Get("scale"), 1);
+                n++;
+            }
+            return n;
+        }
+
+        /// <summary>The mapper's particle effects (fu_particles).</summary>
+        public static int BuildParticles(MapLoader map)
+        {
+            int n = 0;
+            foreach (var e in map.Bsp.Entities)
+            {
+                if (e.ClassName != "fu_particles") continue;
+                Vector3 at = GoldSrcSpace.ToUnity(Vec(e.Get("origin")));
+                bool aimed = e.Get("angles") != "" || e.Get("pitch") != "";
+                var rc = Vec(e.Get("rendercolor"));
+                Color? colour = rc.X + rc.Y + rc.Z > 0 ? new Color(rc.X / 255f, rc.Y / 255f, rc.Z / 255f, 1) : (Color?)null;
+                var fx = MapParticles.Make(e.Get("effect", "steam"), aimed ? Aim(e) : Vector3.up, colour,
+                                           Num(e.Get("rate"), 1), Num(e.Get("size"), 1), Num(e.Get("radius"), 4) * Inch);
+                if (fx == null)
+                {
+                    Debug.LogWarning($"Fortress United: fu_particles effect '{e.Get("effect")}' isn't known");
+                    continue;
+                }
+                fx.transform.SetParent(map.transform, false);
+                fx.transform.position = at;
+                n++;
+            }
+            return n;
+        }
+
+        static Color AccentColour(MapEntity e, Vector3 at)
+        {
+            var rc = Vec(e.Get("rendercolor"));
+            if (rc.X + rc.Y + rc.Z > 0)
+                return new Color(rc.X / 255f, rc.Y / 255f, rc.Z / 255f);
+            if (int.TryParse(e.Get("team_no"), out int t) && t >= 1 && t <= 4)
+                return TeamColours.For((TeamColours.Team)t);
+            var (team, weight) = MapLights.TeamAt(at);
+            return team >= 0 && weight > 0.5f ? TeamColours.For((TeamColours.Team)(team + 1)) : new Color(0.55f, 0.95f, 1f);
+        }
+
+        /// <summary>
+        /// Where a point entity aims, as GoldSrc lights read it: angles "pitch yaw roll"
+        /// (or a separate "pitch" key), with pitch -90 straight down and 90 straight up.
+        /// </summary>
+        public static Vector3 Aim(MapEntity e)
+        {
+            var a = Vec(e.Get("angles"));
+            float pitch = a.X, yaw = a.Y;
+            string p1 = e.Get("pitch");
+            if (p1 != "") pitch = Num(p1, pitch);
+            string y1 = e.Get("angle");
+            if (y1 != "") yaw = Num(y1, yaw);
+            float pr = pitch * Mathf.Deg2Rad, yr = yaw * Mathf.Deg2Rad;
+            var d = new Vec3(Mathf.Cos(pr) * Mathf.Cos(yr), Mathf.Cos(pr) * Mathf.Sin(yr), Mathf.Sin(pr));
+            return GoldSrcSpace.DirectionToUnity(d).normalized;
+        }
+
+        static Vector4 Vec4(string s)
+        {
+            var p = (s ?? "").Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+            var r = Vector4.zero;
+            for (int i = 0; i < p.Length && i < 4; i++)
+                if (float.TryParse(p[i], NumberStyles.Float, CultureInfo.InvariantCulture, out float f)) r[i] = f;
+            return r;
+        }
+
         /// <summary>The mapper's screen positions (fu_screen): position, facing, team, width (m).</summary>
         public static List<(Vector3 pos, Vector3 facing, int team, float width)> Screens(MapLoader map)
         {
@@ -178,7 +317,7 @@ namespace FortressUnited.Game
         }
 
         /// <summary>Which way a point entity faces (its yaw, as GoldSrc stores it in angles or angle).</summary>
-        static Vector3 Facing(MapEntity e)
+        public static Vector3 Facing(MapEntity e)
         {
             var a = Vec(e.Get("angles"));
             float yaw = a.Y;
@@ -189,7 +328,7 @@ namespace FortressUnited.Game
             return GoldSrcSpace.DirectionToUnity(new Vec3(Mathf.Cos(r), Mathf.Sin(r), 0)).normalized;
         }
 
-        static Vec3 Vec(string s)
+        public static Vec3 Vec(string s)
         {
             var p = (s ?? "").Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
             float x = 0, y = 0, z = 0;
@@ -199,7 +338,7 @@ namespace FortressUnited.Game
             return new Vec3(x, y, z);
         }
 
-        static float Num(string s, float fallback) =>
+        public static float Num(string s, float fallback) =>
             float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out float f) ? f : fallback;
     }
 }

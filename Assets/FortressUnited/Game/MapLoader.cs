@@ -25,6 +25,8 @@ namespace FortressUnited.Game
 
         [Tooltip("Swap old textures for the modern material library (WorldMaterials); off shows the originals.")]
         public bool UseWorldMaterials = true;
+        /// <summary>Set by a caller that chose WorldMaterials.Restyle itself (the demo recorder).</summary>
+        [HideInInspector] public bool KeepRestyleSetting;
 
         public BspFile Bsp { get; private set; }
         /// <summary>The game folders searched for the map's textures (and its sky).</summary>
@@ -63,13 +65,15 @@ namespace FortressUnited.Game
                 return false;
             }
 
+            if (!KeepRestyleSetting)
+                WorldMaterials.Restyle = true;        // each map starts restyled unless it (or the caller) says otherwise
             Bsp = BspFile.Load(path);
             TJunctions.Fix(Bsp);       // close the hairline cracks between polygons
             World = new BspWorld(Bsp);
             // The mapper's look settings (worldspawn fu_* keys)
             MapSettings.Current = MapSettings.From(Bsp);
             if (!MapSettings.Current.Restyle)
-                UseWorldMaterials = false;
+                WorldMaterials.Restyle = false;       // keep the map's own textures, enhanced (a new map load resets it below)
             WorldMaterials.SignStyle = MapSettings.Current.Signs;
 
             var folders = new List<string>(WadFolders);

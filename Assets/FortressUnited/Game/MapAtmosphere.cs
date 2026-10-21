@@ -52,10 +52,21 @@ namespace FortressUnited.Game
             // The map's own sky: always if asked, or by default when it's dark (space, night),
             // which a daytime sky can't stand in for
             bool space = false;
+            Material spaceSky = null;
             if (map != null && settings.Sky != "procedural")
             {
-                var own = MapSky.Load(settings.SkyName, map.GameFolders);
-                if (own.HasValue && (settings.Sky == "map" || own.Value.brightness < 0.12f))
+                var own = settings.Sky == "space" ? null : MapSky.Load(settings.SkyName, map.GameFolders);
+                // A starfield (the space sky, or a near-black one) becomes the modern space sky
+                bool starfield = settings.Sky == "space" ||
+                    (settings.Sky == "auto" && own.HasValue && (own.Value.brightness < 0.02f || LooksLikeSpace(settings.SkyName)));
+                if (starfield)
+                {
+                    spaceSky = new Material(Shader.Find("FortressUnited/SpaceSky")) { name = "Space sky" };
+                    RenderSettings.skybox = spaceSky;
+                    space = true;
+                    Space(sun);
+                }
+                else if (own.HasValue && (settings.Sky == "map" || own.Value.brightness < 0.12f))
                 {
                     RenderSettings.skybox = own.Value.sky;
                     space = own.Value.brightness < 0.12f;
@@ -70,9 +81,22 @@ namespace FortressUnited.Game
                 MapLights.Build(map, sun);
                 if (space)
                     UseMapSunColour(map, sun);
+                if (spaceSky != null)
+                {
+                    // The sky's sun where the map's sun is, and its giant planet across the sky from it
+                    Vector3 toSun = -sun.transform.forward;
+                    spaceSky.SetVector("_SunDir", toSun);
+                    spaceSky.SetColor("_SunColor", sun.color);
+                    var flat = new Vector3(-toSun.x, 0, -toSun.z);
+                    if (flat.sqrMagnitude < 0.01f) flat = Vector3.forward;
+                    spaceSky.SetVector("_PlanetDir", (flat.normalized * 0.9f + Vector3.up * 0.3f).normalized);
+                }
                 if (settings.Time == "dusk")
                     sun.transform.rotation = Quaternion.Euler(Mathf.Min(sun.transform.eulerAngles.x, 14), sun.transform.eulerAngles.y, 0);
                 MapEntities.BuildSigns(map);
+                int lights = MapEntities.BuildLights(map), props = MapEntities.BuildProps(map), fx = MapEntities.BuildParticles(map);
+                if (lights + props + fx > 0)
+                    Debug.Log($"Fortress United: mapper extras: {lights} lights, {props} props, {fx} particle effects");
                 MapScreens.Place(map);
                 MapDetail.Build(map);
                 CaptureReflections(map.transform);
@@ -92,6 +116,12 @@ namespace FortressUnited.Game
             RenderSettings.ambientSkyColor = new Color(0.3f, 0.29f, 0.36f);
             RenderSettings.ambientEquatorColor = new Color(0.34f, 0.32f, 0.38f);
             RenderSettings.ambientGroundColor = new Color(0.22f, 0.21f, 0.24f);
+        }
+
+        static bool LooksLikeSpace(string sky)
+        {
+            string s = (sky ?? "").ToLowerInvariant();
+            return s.Contains("space") || s.Contains("star") || s.Contains("neb") || s.Contains("galax") || s.Contains("void");
         }
 
         /// <summary>In space the map's own sun colour is used in full (on a day map only a hint of it).</summary>

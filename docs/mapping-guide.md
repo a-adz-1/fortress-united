@@ -119,13 +119,13 @@ optional.
 
 | Key | Values | Default |
 |---|---|---|
-| `fu_restyle` | `1` the Fortress United look; `0` keep the map's own textures (lighting, signs, screens and detail still apply) | `1` |
+| `fu_restyle` | `1` the Fortress United look; `0` keep the map's own textures, enhanced (neon painted into them glows, they get relief, sheen and sharpening; lights, signs, screens and detail still apply) | `1` |
 | `fu_time` | `day`, `dusk`, `night` | `day` |
 | `fu_sun` | `pitch yaw` in degrees, e.g. `50 135` (overrides `light_environment`) | from `light_environment` |
 | `fu_suncolor` | `r g b`, 0-255 | daylight |
 | `fu_fog` | fog density, `0` for none | `0.0025` |
 | `fu_signs` | `neon` (signs re-lettered as neon), `hologram` (signs traced from their artwork) | `neon` |
-| `fu_sky` | `auto` (the map's own sky, from `skyname`, when it's dark, e.g. space or night; otherwise the modern day sky), `map` (always the map's own), `procedural` (always the modern day sky) | `auto` |
+| `fu_sky` | `auto` (a starfield sky becomes the modern space sky; another dark sky, e.g. night, stays the map's own; otherwise the modern day sky), `map` (always the map's own, from `skyname`), `procedural` (always the modern day sky), `space` (the modern space sky: stars, Milky Way, nebula and a gas giant lit by the sun) | `auto` |
 | `fu_ribs`, `fu_rails`, `fu_frames`, `fu_screens` | `0` turns that automatic extra off | `1` |
 
 A map already built in a clean modern style may look best with
@@ -151,6 +151,40 @@ Place it a unit or two in front of the wall it's on.
 **`fu_screen`** (point): a live match screen. Keys `angles` (facing),
 `team_no`, `width` (units, default 64). Placing any `fu_screen` turns off the
 automatic screens, so you choose them all.
+
+**`fu_light`** (point): a light with real soft shadows. Keys as Hammer's
+lights: `_light` (`r g b brightness`, brightness about 200 for a room
+light), `type` (`point` or `spot`), `angles` for a spot's direction (pitch
+-90 points straight down), `_cone` and `_cone2` (spot inner and outer
+angle), `range` (units), `shadows` (`1` soft, `0` none: cheaper, use it for
+fill lights), `effect` (`flicker`, `pulse`, `strobe`, `candle`) and `speed`.
+Shadowed lights cost the most of anything here: use them where shadows
+matter (a spotlight over a doorway, a lamp over a table), not for every
+light.
+
+**`fu_prop`** (point): a model from the prop library: `crate`,
+`crate_tall`, `barrel`, `console`, `pipes`, `tank`, `antenna` (with a
+blinking beacon), `container`, `pillar`, `light_post` (lights the ground).
+It stands on its origin (place it on the floor) and faces its yaw; `scale`;
+its glow accent takes the team colour of the base it's in, or `team_no` /
+`rendercolor`. Props don't block players: put a `clip` brush round any a
+player shouldn't walk through, as in any GoldSrc map. More props come with
+the library (any model in `Resources/Props` can be placed by its name).
+
+Asset Store packs can add props too. With Creepy Cat's *3D Scifi Kit
+Starter Kit* imported (each developer imports their own copy; its licence
+forbids putting it in the repo), **Fortress United > Register Asset Pack
+Props** makes its 131 pieces placeable as `kit_<name>`, e.g.
+`kit_crate_01`, `kit_column_01_big`, `kit_intercom_01`,
+`kit_light_corridor_01`, `kit_door_left_01`, `kit_fence_long_01`. A map
+using them shows nothing in their place (with a warning) for players
+without the pack, so keep them to decoration.
+
+**`fu_particles`** (point): `effect` = `steam`, `smoke`, `sparks`,
+`embers`, `dust`, `drips`, `hologram` or `fire`. `angles` aims it (up by
+default; sparks look best aimed out and a little down), `rendercolor`
+recolours it, `rate` and `size` scale it, `radius` (units) spreads where it
+comes from. Sparks, holograms and fire also light their surroundings.
 
 **`fu_teamzone`** (brush): the volume is the team's base (`team_no`). Team
 bands, glowing team lines, tinted lights and that team's screens follow it
@@ -235,9 +269,7 @@ lighting.
 
 ## Coming next
 
-More entities on the same pattern: `fu_light` (lights with shadows,
-spotlights, area lights), `fu_reflection` (reflection probes), `fu_post`
-(per-area colour grading and bloom), `fu_particles` (steam, sparks,
-holograms), `fu_prop` (models from the Fortress United prop library by
-name), `fu_sound` (ambient sound); more themes for `fu_time`; and the Unity
+More entities on the same pattern: `fu_reflection` (reflection probes),
+`fu_post` (per-area colour grading and bloom), `fu_sound` (ambient sound);
+more props in the library; more themes for `fu_time`; and the Unity
 importer and overlays.

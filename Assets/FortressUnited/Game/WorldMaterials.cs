@@ -97,8 +97,24 @@ namespace FortressUnited.Game
                 MakeWater(mat, name, rgba);
                 return;
             }
-            if (!Lookup(name, out var id, out var mode, out var team) || mode == "keep")
+            if (!Lookup(name, out var id, out var mode, out var team))
                 return;
+            // Kept textures (the map's own, when it isn't restyled, or ones marked keep) still get
+            // the engine's treatment: neon in the artwork glows, surfaces get relief and sheen
+            bool special = name.StartsWith("{") || name.StartsWith("sky", StringComparison.OrdinalIgnoreCase) ||
+                           name.Equals("aaatrigger", StringComparison.OrdinalIgnoreCase);
+            // On a kept map, light textures keep their own art (strips keep their colour) and glow in it
+            if (!Restyle && mode == "light")
+            {
+                Enhance(mat, rgba, texWidth, texHeight, glowAll: true);
+                return;
+            }
+            if (mode == "keep" || (!Restyle && (mode == "panel" || mode == "metal" || mode == "replace")))
+            {
+                if (!special)
+                    Enhance(mat, rgba, texWidth, texHeight);
+                return;
+            }
             switch (mode)
             {
                 case "panel": MakePanels(mat, team, rgba, metal: false); return;
@@ -347,6 +363,12 @@ namespace FortressUnited.Game
         /// </summary>
         public static string SignStyle = "neon";
 
+        /// <summary>
+        /// False keeps the map's own textures (fu_restyle 0), enhanced rather than replaced;
+        /// lights, signs, logos, screens, glass and water still get the modern treatment.
+        /// </summary>
+        public static bool Restyle = true;
+
         /// <summary>A standard sign re-lettered in neon (NeonSigns) on dark gloss; false if it isn't one.</summary>
         static bool MakeNeonSign(Material mat, string name, byte[] rgba, int w, int h)
         {
@@ -457,6 +479,92 @@ namespace FortressUnited.Game
             // Rendered images run bottom to top; map textures top to bottom
             mat.SetTextureScale("_BaseMap", new Vector2(1, -1));
             mat.SetTextureOffset("_BaseMap", new Vector2(0, 1));
+        }
+
+        /// <summary>
+        /// A map's own texture, enhanced: sharpened at twice the size, with relief (a
+        /// normal map from its shading), a little sheen, and its neon glowing (bright,
+        /// saturated pixels: strips and lamps painted into the artwork become emissive).
+        /// </summary>
+        static void Enhance(Material mat, byte[] rgba, int w, int h, bool glowAll = false)
+        {
+            if (rgba == null || rgba.Length < w * h * 4)
+                return;
+            int W = w * 2, H = h * 2;
+            // Upscale (bilinear), then sharpen a touch
+            var up = new Color[W * H];
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    float sx = (x + 0.5f) / 2 - 0.5f, sy = (y + 0.5f) / 2 - 0.5f;
+                    int x0 = Mathf.FloorToInt(sx), y0 = Mathf.FloorToInt(sy);
+                    float fx = sx - x0, fy = sy - y0;
+                    Color c00 = Px(rgba, w, h, x0, y0), c10 = Px(rgba, w, h, x0 + 1, y0);
+                    Color c01 = Px(rgba, w, h, x0, y0 + 1), c11 = Px(rgba, w, h, x0 + 1, y0 + 1);
+                    up[y * W + x] = Color.Lerp(Color.Lerp(c00, c10, fx), Color.Lerp(c01, c11, fx), fy);
+                }
+            var colour = new Color32[W * H];
+            var lum = new float[W * H];
+            var glow = new Color32[W * H];
+            int glowing = 0;
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    int i = y * W + x;
+                    Color c = up[i];
+                    Color blur = (up[y * W + (x + W - 1) % W] + up[y * W + (x + 1) % W] + up[((y + H - 1) % H) * W + x] + up[((y + 1) % H) * W + x]) * 0.25f;
+                    Color sharp = c + (c - blur) * 0.3f;
+                    sharp.r = Mathf.Clamp01(sharp.r); sharp.g = Mathf.Clamp01(sharp.g); sharp.b = Mathf.Clamp01(sharp.b); sharp.a = 1;
+                    colour[i] = sharp;
+                    lum[i] = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
+                    Color.RGBToHSV(c, out _, out float sat, out float val);
+                    float g = glowAll ? Mathf.Clamp01(val * 1.2f) : Mathf.Clamp01((sat - 0.4f) * 5) * Mathf.Clamp01((val - 0.5f) * 5);
+                    if (g > 0.05f) glowing++;
+                    glow[i] = (Color)(c * g);
+                }
+            // Relief from shading: a normal map (stored the way URP unpacks it: x in alpha, y in green)
+            var nrm = new Color32[W * H];
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    float dx = lum[y * W + (x + 1) % W] - lum[y * W + (x + W - 1) % W];
+                    float dy = lum[((y + 1) % H) * W + x] - lum[((y + H - 1) % H) * W + x];
+                    var n = new Vector3(-dx * 1.2f, -dy * 1.2f, 1).normalized;
+                    nrm[y * W + x] = new Color32(255, (byte)(255 * (n.y * 0.5f + 0.5f)), 0, (byte)(255 * (n.x * 0.5f + 0.5f)));
+                }
+            Texture2D Make(Color32[] px, bool linear, string tname)
+            {
+                var t = new Texture2D(W, H, TextureFormat.RGBA32, true, linear)
+                {
+                    name = tname, filterMode = FilterMode.Trilinear, anisoLevel = 8, wrapMode = TextureWrapMode.Repeat,
+                };
+                t.SetPixels32(px);
+                t.Apply(true, true);
+                return t;
+            }
+            var baseTex = Make(colour, false, "Enhanced");
+            mat.SetTexture("_BaseMap", baseTex);
+            mat.mainTexture = baseTex;
+            mat.SetTexture("_BumpMap", Make(nrm, true, "Enhanced Normal"));
+            mat.SetFloat("_BumpScale", 1);
+            mat.EnableKeyword("_NORMALMAP");
+            mat.SetFloat("_Smoothness", 0.38f);
+            mat.SetFloat("_Metallic", 0.05f);
+            // Neon painted into the artwork glows (only if there is some)
+            if (glowing > W * H / 500)
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetTexture("_EmissionMap", Make(glow, false, "Enhanced Glow"));
+                mat.SetColor("_EmissionColor", Color.white * 2.4f);
+                mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+            }
+        }
+
+        static Color Px(byte[] rgba, int w, int h, int x, int y)
+        {
+            x = ((x % w) + w) % w; y = ((y % h) + h) % h;       // textures tile
+            int i = (y * w + x) * 4;
+            return new Color(rgba[i] / 255f, rgba[i + 1] / 255f, rgba[i + 2] / 255f, 1);
         }
 
         /// <summary>Windows: tinted, see-through and glossy.</summary>
