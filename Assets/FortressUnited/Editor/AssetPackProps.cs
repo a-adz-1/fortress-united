@@ -42,6 +42,37 @@ namespace FortressUnited.EditorTools
             File.WriteAllLines(Path.Combine(Out, "..", "props.txt"), System.Array.ConvertAll(
                 AssetDatabase.FindAssets("t:Prefab", new[] { Out }), g => Path.GetFileNameWithoutExtension(AssetDatabase.GUIDToAssetPath(g))));
             Debug.Log($"Fortress United: registered {n} asset pack props in {Out}");
+            RegisterSurfaces();
+        }
+
+        const string Kit = "Assets/Creepy_Cat/3D Scifi Kit Starter Kit_HD/Textures/";
+        const string SurfaceOut = "Assets/FortressUnited/Resources/ThirdParty/Kit";
+
+        /// <summary>
+        /// The kit's wall and floor texture sets, as materials the game loads by name
+        /// (Resources/ThirdParty/Kit/Wall_01 etc.) for restyling map surfaces (KitSurface).
+        /// </summary>
+        public static void RegisterSurfaces()
+        {
+            if (!AssetDatabase.IsValidFolder(Kit.TrimEnd('/'))) return;
+            Directory.CreateDirectory(SurfaceOut);
+            int n = 0;
+            foreach (var set in new[] { "Wall_01", "Wall_07", "Wall_08", "Floor_01", "Floor_02" })
+            {
+                Texture2D Load(string suffix, string ext = ".png") =>
+                    AssetDatabase.LoadAssetAtPath<Texture2D>($"{Kit}HD_{set}_Dif_Style_02_{suffix}{ext}");
+                var alb = Load("Alb");
+                if (alb == null) continue;
+                var m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = set };
+                m.SetTexture("_BaseMap", alb);
+                m.SetTexture("_BumpMap", Load("Norm"));
+                m.SetTexture("_MetallicGlossMap", Load("Metal", ".tif"));
+                m.SetTexture("_EmissionMap", Load("Illum"));
+                AssetDatabase.CreateAsset(m, $"{SurfaceOut}/{set}.mat");
+                n++;
+            }
+            AssetDatabase.SaveAssets();
+            Debug.Log($"Fortress United: registered {n} asset pack surface sets in {SurfaceOut}");
         }
     }
 }

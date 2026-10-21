@@ -37,7 +37,7 @@ namespace FortressUnited.Game
         /// <summary>The settings of the map being played.</summary>
         public static MapSettings Current = new MapSettings();
 
-        public static MapSettings From(BspFile bsp)
+        public static MapSettings From(BspFile bsp, string mapName = "")
         {
             var s = new MapSettings();
             MapEntity world = null;
@@ -45,6 +45,7 @@ namespace FortressUnited.Game
                 if (e.ClassName == "worldspawn") { world = e; break; }
             if (world == null)
                 return s;
+            ApplyPreset(world, mapName);
             s.Restyle = Flag(world, "fu_restyle", true);
             string time = world.Get("fu_time").ToLowerInvariant();
             if (time == "dusk" || time == "night" || time == "day") s.Time = time;
@@ -64,6 +65,26 @@ namespace FortressUnited.Game
             s.Frames = Flag(world, "fu_frames", true);
             s.Screens = Flag(world, "fu_screens", true);
             return s;
+        }
+
+        /// <summary>
+        /// Presets for known maps (Resources/MapPresets.csv: map,key,value), for maps we
+        /// shouldn't edit (e.g. spaceape_l keeps its own textures). A key the map sets
+        /// itself always wins.
+        /// </summary>
+        static void ApplyPreset(MapEntity world, string mapName)
+        {
+            if (string.IsNullOrEmpty(mapName)) return;
+            var csv = Resources.Load<TextAsset>("MapPresets");
+            if (csv == null) return;
+            foreach (var line in csv.text.Split('\n'))
+            {
+                var p = line.Trim().Split(',');
+                if (p.Length < 3 || p[0].StartsWith("#") || !p[0].Equals(mapName, System.StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (world.Get(p[1]) == "")
+                    world.Set(p[1], string.Join(",", p, 2, p.Length - 2));
+            }
         }
 
         static bool Flag(MapEntity e, string key, bool fallback)

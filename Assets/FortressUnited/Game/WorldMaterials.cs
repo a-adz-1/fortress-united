@@ -117,7 +117,10 @@ namespace FortressUnited.Game
             }
             switch (mode)
             {
-                case "panel": MakePanels(mat, team, rgba, metal: false); return;
+                case "panel":
+                    if (!MakeKit(mat, name, team, rgba))
+                        MakePanels(mat, team, rgba, metal: false);
+                    return;
                 case "metal": MakePanels(mat, team, rgba, metal: true); return;
                 case "light": MakeLightPanel(mat, rgba); return;
                 case "sign":
@@ -313,6 +316,66 @@ namespace FortressUnited.Game
                 return t;
             }
             return (Make(alb, "Light Panel"), Make(emi, "Light Panel Glow"));
+        }
+
+        // An imported kit's modules: (texture set, atlas crop u0 v0 u1 v1, module size in m)
+        static readonly (string set, Vector4 crop, Vector2 size)[] KitWalls =
+        {
+            ("Wall_01", new Vector4(0f, 0f, 1f, 1f), new Vector2(4.0f, 3.6f)),
+            ("Wall_07", new Vector4(0f, 0f, 1f, 0.92f), new Vector2(3.6f, 3.3f)),
+            ("Wall_08", new Vector4(0.03f, 0.3f, 0.97f, 1f), new Vector2(3.4f, 2.6f)),
+        };
+        static readonly (string set, Vector4 crop)[] KitFloors =
+        {
+            ("Floor_01", new Vector4(0f, 0f, 0.5f, 0.5f)),
+            ("Floor_02", new Vector4(0f, 0.5f, 0.5f, 1f)),
+            ("Floor_02", new Vector4(0.5f, 0f, 1f, 0.5f)),
+        };
+        static readonly Dictionary<string, Material> kitSets = new Dictionary<string, Material>();
+        static Shader kitShader;
+
+        static Material KitSet(string set)
+        {
+            if (!kitSets.TryGetValue(set, out var m))
+                kitSets[set] = m = Resources.Load<Material>("ThirdParty/Kit/" + set);
+            return m;
+        }
+
+        /// <summary>
+        /// Panelling in an imported kit's art (KitSurface): a wall, floor and ceiling module
+        /// picked per texture name, so different old textures look different. False when
+        /// no kit is imported (the procedural panelling is used instead).
+        /// </summary>
+        static bool MakeKit(Material mat, string name, string team, byte[] rgba)
+        {
+            if (kitShader == null) kitShader = Shader.Find("FortressUnited/KitSurface");
+            int h = Math.Abs(name.ToLowerInvariant().GetHashCode());
+            var wall = KitWalls[h % KitWalls.Length];
+            var floor = KitFloors[(h / 7) % KitFloors.Length];
+            Material w = KitSet(wall.set), f = KitSet(floor.set), c = KitSet("Floor_01");
+            if (kitShader == null || w == null || f == null || c == null)
+                return false;
+            mat.shader = kitShader;
+            mat.SetTexture("_WallAlb", w.GetTexture("_BaseMap"));
+            mat.SetTexture("_WallNrm", w.GetTexture("_BumpMap"));
+            mat.SetTexture("_WallMet", w.GetTexture("_MetallicGlossMap"));
+            mat.SetTexture("_WallIllum", w.GetTexture("_EmissionMap"));
+            mat.SetVector("_WallCrop", wall.crop);
+            mat.SetVector("_WallModule", wall.size);
+            mat.SetTexture("_FloorAlb", f.GetTexture("_BaseMap"));
+            mat.SetTexture("_FloorNrm", f.GetTexture("_BumpMap"));
+            mat.SetTexture("_FloorMet", f.GetTexture("_MetallicGlossMap"));
+            mat.SetVector("_FloorCrop", floor.crop);
+            // Ceilings: the rail strips (from Floor_01); when the floor set differs the
+            // ceiling uses the floor set's own plate instead
+            mat.SetVector("_CeilCrop", floor.set == "Floor_01" ? new Vector4(0f, 0.5f, 0.5f, 1f) : floor.crop);
+            var old = MeanLinear(rgba);
+            float lum = 0.2126f * old.x + 0.7152f * old.y + 0.0722f * old.z;
+            mat.SetFloat("_Tone", Mathf.Clamp(Mathf.Sqrt(lum / 0.12f), 0.6f, 1.05f));
+            var t = TeamOf(team);
+            mat.SetFloat("_Accent", t.HasValue ? 1 : 0);
+            if (t.HasValue) mat.SetColor("_AccentColor", TeamColours.PaintFor(t.Value));
+            return true;
         }
 
         /// <summary>Light fixtures and signs: the old texture lit from within.</summary>

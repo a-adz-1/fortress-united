@@ -128,6 +128,10 @@ optional.
 | `fu_sky` | `auto` (a starfield sky becomes the modern space sky; another dark sky, e.g. night, stays the map's own; otherwise the modern day sky), `map` (always the map's own, from `skyname`), `procedural` (always the modern day sky), `space` (the modern space sky: stars, Milky Way, nebula and a gas giant lit by the sun) | `auto` |
 | `fu_ribs`, `fu_rails`, `fu_frames`, `fu_screens` | `0` turns that automatic extra off | `1` |
 
+Known maps can also get settings from `Resources/MapPresets.csv`
+(`map,key,value`) without editing them, e.g. spaceape keeps its own textures
+and gets the space sky. A map's own keys always win.
+
 A map already built in a clean modern style may look best with
 `fu_restyle 0`, keeping its textures but getting the lighting and extras.
 Under a dark sky (space), the game also switches to space lighting: no
@@ -179,6 +183,12 @@ Props** makes its 131 pieces placeable as `kit_<name>`, e.g.
 `kit_light_corridor_01`, `kit_door_left_01`, `kit_fence_long_01`. A map
 using them shows nothing in their place (with a warning) for players
 without the pack, so keep them to decoration.
+
+The same command also registers the kit's wall and floor art: with the kit
+imported, restyled maps use its high-detail modules for built surfaces
+(walls start at the floor, red accents repainted in the base's team
+colour, glowing light panels), picked per texture name for variety.
+Without the kit, the procedural panelling is used.
 
 **`fu_particles`** (point): `effect` = `steam`, `smoke`, `sparks`,
 `embers`, `dust`, `drips`, `hologram` or `fire`. `angles` aims it (up by

@@ -54,6 +54,9 @@ namespace FortressUnited.Game
         };
 
         readonly Dictionary<int, Material> materials = new Dictionary<int, Material>();
+        // Wall faces whose floor height (uv1.y) is found once all the map's colliders exist
+        readonly List<(List<Vector2> sizes, int first, int count, Vector3 bottom, Vector3 normal)> floorRefs = new List<(List<Vector2>, int, int, Vector3, Vector3)>();
+        readonly Dictionary<List<Vector2>, Mesh> pendingMeshes = new Dictionary<List<Vector2>, Mesh>();
         TextureSource textures;
 
         public bool Load()
@@ -71,7 +74,7 @@ namespace FortressUnited.Game
             TJunctions.Fix(Bsp);       // close the hairline cracks between polygons
             World = new BspWorld(Bsp);
             // The mapper's look settings (worldspawn fu_* keys)
-            MapSettings.Current = MapSettings.From(Bsp);
+            MapSettings.Current = MapSettings.From(Bsp, Path.GetFileNameWithoutExtension(path));
             if (!MapSettings.Current.Restyle)
                 WorldMaterials.Restyle = false;       // keep the map's own textures, enhanced (a new map load resets it below)
             WorldMaterials.SignStyle = MapSettings.Current.Signs;
@@ -122,6 +125,8 @@ namespace FortressUnited.Game
                 foreach (var k in e.KeyOrder)
                     info.Keys.Add($"{k} = {e.Properties[k]}");
             }
+
+            FindFloors();
 
             Debug.Log($"Fortress United: loaded {Path.GetFileName(path)} ({Bsp.Faces.Length} faces, {Bsp.Entities.Count} entities)");
             return true;
@@ -227,8 +232,18 @@ namespace FortressUnited.Game
                     minB = Mathf.Min(minB, bb); maxB = Mathf.Max(maxB, bb);
                 }
                 float narrow = Mathf.Min(maxA - minA, maxB - minB);
+                float minY = float.MaxValue;
+                Vector3 bottom = Vector3.zero;
                 for (int k = first; k < verts.Count; k++)
-                    sizes.Add(new Vector2(narrow, 0));
+                {
+                    minY = Mathf.Min(minY, verts[k].y);
+                    bottom += verts[k];
+                }
+                bottom /= verts.Count - first;
+                for (int k = first; k < verts.Count; k++)
+                    sizes.Add(new Vector2(narrow, minY));        // y: the face's bottom, refined to the floor below once the map is built
+                if (Mathf.Abs(un.y) < 0.3f)
+                    floorRefs.Add((sizes, first, verts.Count - first, new Vector3(bottom.x, minY, bottom.z), un));
                 // Fan triangulation; wind so the front faces the normal in Unity space
                 for (int k = 1; k + 1 < f.Points.Length; k++)
                 {
@@ -251,10 +266,35 @@ namespace FortressUnited.Game
             mesh.SetNormals(norms);
             mesh.SetUVs(0, uvs);
             mesh.SetUVs(1, sizes);
+            pendingMeshes[sizes] = mesh;
             mesh.SetTriangles(tris, 0);
             mesh.RecalculateBounds();
             mesh.RecalculateTangents();     // for the materials' normal and detail maps
             return mesh;
+        }
+
+        /// <summary>
+        /// The floor under each wall face (the compiler splits tall walls into pieces;
+        /// each piece should know where the real floor is, so wall art lines up with it).
+        /// </summary>
+        void FindFloors()
+        {
+            var changed = new HashSet<List<Vector2>>();
+            foreach (var (sizes, first, count, bottom, normal) in floorRefs)
+            {
+                Vector3 from = transform.TransformPoint(bottom) + normal * 0.25f + Vector3.up * 0.2f;
+                if (!Physics.Raycast(from, Vector3.down, out var hit, 40f)) continue;
+                float floorY = transform.InverseTransformPoint(hit.point).y;
+                if (floorY > bottom.y + 0.05f) continue;
+                for (int k = first; k < first + count; k++)
+                    sizes[k] = new Vector2(sizes[k].x, floorY);
+                changed.Add(sizes);
+            }
+            foreach (var sizes in changed)
+                if (pendingMeshes.TryGetValue(sizes, out var mesh))
+                    mesh.SetUVs(1, sizes);
+            floorRefs.Clear();
+            pendingMeshes.Clear();
         }
 
         /// <summary>A face's width across its narrower direction (m).</summary>

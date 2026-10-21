@@ -1,0 +1,10 @@
+# Look presets for known maps that don't set them themselves: map,key,value
+# (the same keys as on worldspawn; see docs/mapping-guide.md). A map's own keys win.
+spaceape_l,fu_restyle,0
+spaceape_l,fu_sky,space
+spaceape_b13,fu_restyle,0
+spaceape_b13,fu_sky,space
+spaceape_b9,fu_restyle,0
+spaceape_b9,fu_sky,space
+spaceape_b8,fu_restyle,0
+spaceape_b8,fu_sky,space
