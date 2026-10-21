@@ -48,12 +48,28 @@ namespace FortressUnited.Game
             else if (settings.Time == "night") Night(sun, sky);
             RenderSettings.fogDensity = settings.Fog * (settings.Time == "dusk" ? 1.5f : 1);
             RenderSettings.fog = settings.Fog > 0;
+
+            // The map's own sky: always if asked, or by default when it's dark (space, night),
+            // which a daytime sky can't stand in for
+            bool space = false;
+            if (map != null && settings.Sky != "procedural")
+            {
+                var own = MapSky.Load(settings.SkyName, map.GameFolders);
+                if (own.HasValue && (settings.Sky == "map" || own.Value.brightness < 0.12f))
+                {
+                    RenderSettings.skybox = own.Value.sky;
+                    space = own.Value.brightness < 0.12f;
+                    if (space) Space(sun);
+                }
+            }
             DynamicGI.UpdateEnvironment();
 
             if (map != null)
             {
                 MapEntities.ReadVolumes(map);
                 MapLights.Build(map, sun);
+                if (space)
+                    UseMapSunColour(map, sun);
                 if (settings.Time == "dusk")
                     sun.transform.rotation = Quaternion.Euler(Mathf.Min(sun.transform.eulerAngles.x, 14), sun.transform.eulerAngles.y, 0);
                 MapEntities.BuildSigns(map);
@@ -62,6 +78,38 @@ namespace FortressUnited.Game
                 CaptureReflections(map.transform);
             }
             return sun;
+        }
+
+        /// <summary>
+        /// Space (a dark map sky): no air, so no haze; hard sunlight and a moderate fill,
+        /// so lit ground is bright against a black sky and shadows stay readable.
+        /// </summary>
+        static void Space(Light sun)
+        {
+            RenderSettings.fog = false;
+            sun.intensity = 1.7f;
+            // Fill strong enough that shadows on the ground stay readable (GoldSrc lit these maps evenly)
+            RenderSettings.ambientSkyColor = new Color(0.3f, 0.29f, 0.36f);
+            RenderSettings.ambientEquatorColor = new Color(0.34f, 0.32f, 0.38f);
+            RenderSettings.ambientGroundColor = new Color(0.22f, 0.21f, 0.24f);
+        }
+
+        /// <summary>In space the map's own sun colour is used in full (on a day map only a hint of it).</summary>
+        static void UseMapSunColour(MapLoader map, Light sun)
+        {
+            if (MapSettings.Current.SunColor.HasValue) return;
+            foreach (var e in map.Bsp.Entities)
+            {
+                if (e.ClassName != "light_environment") continue;
+                var p = e.Get("_light").Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries);
+                if (p.Length < 3) return;
+                float r = float.Parse(p[0], System.Globalization.CultureInfo.InvariantCulture);
+                float g = float.Parse(p[1], System.Globalization.CultureInfo.InvariantCulture);
+                float b = float.Parse(p[2], System.Globalization.CultureInfo.InvariantCulture);
+                float m = Mathf.Max(r, Mathf.Max(g, b), 1);
+                sun.color = Color.Lerp(Color.white, new Color(r / m, g / m, b / m), 0.6f);
+                return;
+            }
         }
 
         /// <summary>Dusk: a low warm sun, a violet sky, long shadows, rooms carried by their fixtures.</summary>

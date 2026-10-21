@@ -125,10 +125,13 @@ optional.
 | `fu_suncolor` | `r g b`, 0-255 | daylight |
 | `fu_fog` | fog density, `0` for none | `0.0025` |
 | `fu_signs` | `neon` (signs re-lettered as neon), `hologram` (signs traced from their artwork) | `neon` |
+| `fu_sky` | `auto` (the map's own sky, from `skyname`, when it's dark, e.g. space or night; otherwise the modern day sky), `map` (always the map's own), `procedural` (always the modern day sky) | `auto` |
 | `fu_ribs`, `fu_rails`, `fu_frames`, `fu_screens` | `0` turns that automatic extra off | `1` |
 
 A map already built in a clean modern style may look best with
 `fu_restyle 0`, keeping its textures but getting the lighting and extras.
+Under a dark sky (space), the game also switches to space lighting: no
+haze, hard sunlight in the `light_environment` colour, and a moderate fill.
 
 ## Fortress United entities
 

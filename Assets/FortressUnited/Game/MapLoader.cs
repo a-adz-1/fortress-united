@@ -27,6 +27,8 @@ namespace FortressUnited.Game
         public bool UseWorldMaterials = true;
 
         public BspFile Bsp { get; private set; }
+        /// <summary>The game folders searched for the map's textures (and its sky).</summary>
+        public List<string> GameFolders { get; private set; } = new List<string>();
         /// <summary>A map texture's pixels (from the map or its WADs), or null.</summary>
         public MipTexture TextureData(int tex) => textures?.Get(tex);
         public BspWorld World { get; private set; }
@@ -85,6 +87,7 @@ namespace FortressUnited.Game
                 }
             }
             textures = new TextureSource(Bsp, folders);
+            GameFolders = folders;
 
             var worldRoot = new GameObject("World");
             worldRoot.transform.SetParent(transform, false);

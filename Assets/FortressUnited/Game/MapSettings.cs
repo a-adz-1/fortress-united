@@ -16,6 +16,8 @@ namespace FortressUnited.Game
     /// <item>fu_suncolor: "r g b" (0-255)</item>
     /// <item>fu_fog: fog density (0 for none; default 0.0025)</item>
     /// <item>fu_signs: neon (default) or hologram</item>
+    /// <item>fu_sky: auto (default: the map's own sky if it's dark, i.e. space or night; else
+    /// the modern day sky), map (always the map's own), procedural (always the modern one)</item>
     /// <item>fu_ribs, fu_rails, fu_frames, fu_screens: 0 turns that automatic extra off</item>
     /// </list>
     /// </summary>
@@ -27,6 +29,8 @@ namespace FortressUnited.Game
         public Color? SunColor;
         public float Fog = 0.0025f;
         public string Signs = "neon";
+        public string Sky = "auto";
+        public string SkyName = "";
         public bool Ribs = true, Rails = true, Frames = true, Screens = true;
 
         /// <summary>The settings of the map being played.</summary>
@@ -49,6 +53,9 @@ namespace FortressUnited.Game
             if (sc.Length >= 3) s.SunColor = new Color(sc[0] / 255f, sc[1] / 255f, sc[2] / 255f);
             var fog = Floats(world.Get("fu_fog"));
             if (fog.Length >= 1) s.Fog = Mathf.Max(0, fog[0]);
+            string sky = world.Get("fu_sky").ToLowerInvariant();
+            if (sky == "map" || sky == "procedural" || sky == "auto") s.Sky = sky;
+            s.SkyName = world.Get("skyname");
             string signs = world.Get("fu_signs").ToLowerInvariant();
             if (signs == "neon" || signs == "hologram") s.Signs = signs;
             s.Ribs = Flag(world, "fu_ribs", true);

@@ -195,6 +195,12 @@
 		"dusk" : "Dusk"
 		"night" : "Night"
 	]
+	fu_sky(choices) : "FU: sky" : "auto" =
+	[
+		"auto" : "Auto (the map's sky if it's dark, e.g. space; else the modern day sky)"
+		"map" : "The map's own sky (skyname)"
+		"procedural" : "The modern day sky"
+	]
 	fu_sun(string) : "FU: sun angle 'pitch yaw' (overrides light_environment)"
 	fu_suncolor(color255) : "FU: sun colour"
 	fu_fog(string) : "FU: fog density (0 = none)" : "0.0025"
