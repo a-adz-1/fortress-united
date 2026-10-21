@@ -399,26 +399,22 @@ namespace FortressUnited.Game
             return Lookup(name, out _, out var mode, out _) ? mode : null;
         }
 
-        /// <summary>Our team logo glowing on a dark glossy panel (the loader fits it to each face).</summary>
+        /// <summary>Our team logo as a hologram (HoloEmblem, like the flag banners), fitted to each face by the loader.</summary>
         static void MakeLogo(Material mat, string team)
         {
             var t = TeamOf(team) ?? TeamColours.Team.Blue;
             var logo = TeamColours.Logo(t);
             if (logo == null)
                 return;
-            // The logo's own artwork drawn on a dark glossy panel, lit just enough to read
-            // as a screen: a strong glow blooms it into a blob
-            mat.SetTexture("_BaseMap", logo);
+            // A hologram in the style of the flag banners: sharp light lines on dark glass
+            var holo = Shader.Find("FortressUnited/HoloEmblem");
+            if (holo == null)
+                return;
+            mat.shader = holo;
+            mat.SetTexture("_Logo", logo);
             mat.mainTexture = logo;
-            // The artwork is white: tint it in the team's colour
-            var c = TeamColours.For(t);
-            mat.SetColor("_BaseColor", c * 0.45f);
-            mat.SetFloat("_Smoothness", 0.8f);
-            mat.EnableKeyword("_EMISSION");
-            mat.SetTexture("_EmissionMap", logo);
-            mat.SetColor("_EmissionColor", c * 0.8f);
-            mat.SetTextureScale("_BaseMap", Vector2.one);
-            mat.SetTextureOffset("_BaseMap", Vector2.zero);
+            mat.SetColor("_Color", TeamColours.Glow(TeamColours.For(t), 1.3f));
+            mat.SetColor("_Core", TeamColours.Glow(TeamColours.CoreFor(t), 1.2f));
         }
 
         /// <summary>
